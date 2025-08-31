@@ -1,1 +1,1 @@
-
+class AriaDeviceAdminReceiver : DeviceAdminReceiver()
