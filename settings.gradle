@@ -1,1 +1,2 @@
-
+rootProject.name = "LostModeClient"
+include(":app")
