@@ -1,5 +1,6 @@
 name: Build APK
 
+# Trigger workflow on push to main branch
 on:
   push:
     branches:
@@ -10,23 +11,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      # Step 1: Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up JDK
-      uses: actions/setup-java@v3
-      with:
-        distribution: temurin
-        java-version: 17
+      # Step 2: Set up JDK 17 for Gradle
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 17
 
-    - name: Set up Android SDK
-      uses: android-actions/setup-android@v2
+      # Step 3: Set up Android SDK
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v2
 
-    - name: Build APK
-      run: ./gradlew assembleRelease
+      # Step 4: Build the release APK
+      - name: Build APK
+        run: ./gradlew assembleRelease
 
-    - name: Upload APK
-      uses: actions/upload-artifact@v3
-      with:
-        name: LostModeClient-APK
-        path: app/build/outputs/apk/release/app-release.apk
+      # Step 5: Upload the built APK as artifact (updated to v4)
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LostModeClient-APK
+          path: app/build/outputs/apk/release/app-release.apk
