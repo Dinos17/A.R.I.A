@@ -13,7 +13,6 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Activate Device Admin
         val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val compName = ComponentName(this, AriaDeviceAdminReceiver::class.java)
         val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
@@ -21,7 +20,6 @@ class MainActivity : Activity() {
         intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Required to enable Lost Mode")
         startActivity(intent)
 
-        // Start LostModeService
         val serviceIntent = Intent(this, LostModeService::class.java)
         startForegroundService(serviceIntent)
     }

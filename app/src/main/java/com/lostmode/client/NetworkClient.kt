@@ -3,10 +3,8 @@ package com.lostmode.client
 import android.location.Location
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
 
 object NetworkClient {
-
     private const val SERVER_URL = "http://192.168.1.102:5000/update_location"
 
     fun sendLocationToServer(location: Location) {
