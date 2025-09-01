@@ -4,6 +4,7 @@ plugins {
 }
 
 android {
+    namespace "com.lostmode.client"  // Added namespace for AGP
     compileSdk 34
 
     defaultConfig {
