@@ -1,16 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <device-admin xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Policies that your admin will enforce -->
     <uses-policies>
-        <!-- Enforces screen lock password rules -->
+        <!-- Keep lock and admin functionality but NO wipe-data -->
         <limit-password />
-        <!-- Can reset the device password -->
         <reset-password />
-        <!-- Can watch login attempts -->
         <watch-login />
-        <!-- Can wipe the device -->
-        <wipe-data />
-        <!-- Can force the device to lock -->
         <force-lock />
+        <!-- intentionally omitted: <wipe-data /> -->
     </uses-policies>
 </device-admin>
