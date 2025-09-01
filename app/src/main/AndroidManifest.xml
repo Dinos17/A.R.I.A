@@ -1,41 +1,37 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.lostmode.client">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.SEND_SMS"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <!-- package removed; namespace is now defined in build.gradle -->
 
     <application
         android:allowBackup="true"
-        android:label="LostModeClient"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+        android:theme="@style/Theme.LostModeClient">
 
-        <activity android:name=".MainActivity">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"> <!-- Added android:exported -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
 
-        <service
-            android:name=".LostModeService"
-            android:foregroundServiceType="location|dataSync"
-            android:exported="false"/>
-
         <receiver
             android:name=".AriaDeviceAdminReceiver"
-            android:permission="android.permission.BIND_DEVICE_ADMIN">
-            <meta-data
-                android:name="android.app.device_admin"
-                android:resource="@xml/device_admin"/>
+            android:exported="true"> <!-- Added android:exported -->
             <intent-filter>
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED"/>
             </intent-filter>
         </receiver>
 
+        <!-- Other components like services -->
+        <service
+            android:name=".LostModeService"
+            android:foregroundServiceType="location"
+            android:exported="false" />
+            
     </application>
 </manifest>
