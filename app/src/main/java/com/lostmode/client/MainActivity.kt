@@ -1,114 +1,74 @@
 package com.lostmode.client
 
 import android.Manifest
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.widget.Button
-import android.widget.TextView
-import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.lifecycle.Observer
+import androidx.core.content.ContextCompat
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
+import android.widget.Toast
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var lostModeStatus: TextView
-    private lateinit var gpsStatus: TextView
-    private lateinit var connStatus: TextView
-    private lateinit var btnStart: Button
-    private lateinit var btnStop: Button
-
-    private val REQUEST_PERMISSIONS = 1234
+    private val PERMISSIONS_REQUEST = 1234
+    private val requiredPermissions = arrayOf(
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.ACCESS_COARSE_LOCATION,
+        Manifest.permission.INTERNET
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        lostModeStatus = findViewById(R.id.lostModeStatus)
-        gpsStatus = findViewById(R.id.gpsStatus)
-        connStatus = findViewById(R.id.connStatus)
-        btnStart = findViewById(R.id.btnStartService)
-        btnStop = findViewById(R.id.btnStopService)
+        // Request runtime permissions if not granted
+        requestNeededPermissions()
 
-        btnStart.setOnClickListener {
-            checkAndRequestPermissions()
-        }
-        btnStop.setOnClickListener {
-            stopService(Intent(this, LostModeService::class.java))
-            lostModeStatus.text = "Lost Mode: stopped"
-            connStatus.text = "Connection: stopped"
-        }
-
-        // Observe LiveData from the Service
-        LostModeService.statusLiveData.observe(this, Observer { status ->
-            lostModeStatus.text = "Lost Mode: ${if (status.isActive) "Active" else "Inactive"}"
-            gpsStatus.text = "GPS: ${status.lastCoordinates}"
-            connStatus.text = "Connection: ${status.connectionStatus}"
-        })
-
-        ensureDeviceAdmin()
-    }
-
-    private fun ensureDeviceAdmin() {
-        val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        // Launch device admin prompt to allow locking
+        val dpm = getSystemService(DevicePolicyManager::class.java)
         val compName = ComponentName(this, AriaDeviceAdminReceiver::class.java)
         if (!dpm.isAdminActive(compName)) {
             val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
             intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, compName)
-            intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, getString(R.string.device_admin_enable_text))
+            intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Required to enable Lost Mode features")
             startActivity(intent)
         }
+
+        // Start foreground service (LostModeService)
+        val svcIntent = Intent(this, LostModeService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ContextCompat.startForegroundService(this, svcIntent)
+        } else {
+            startService(svcIntent)
+        }
+
+        Toast.makeText(this, "ARIA service is starting", Toast.LENGTH_SHORT).show()
+        // Optionally finish the activity if you want it to disappear immediately:
+        // finish()
     }
 
-    private fun checkAndRequestPermissions() {
-        val perms = mutableListOf<String>()
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            perms.add(Manifest.permission.ACCESS_FINE_LOCATION)
+    private fun requestNeededPermissions() {
+        val missing = requiredPermissions.filter {
+            ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
-            perms.add(Manifest.permission.SEND_SMS)
-        }
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            perms.add(Manifest.permission.ACCESS_COARSE_LOCATION)
-        }
-        if (perms.isNotEmpty()) {
-            ActivityCompat.requestPermissions(this, perms.toTypedArray(), REQUEST_PERMISSIONS)
-        } else {
-            startLostService()
+        if (missing.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, missing.toTypedArray(), PERMISSIONS_REQUEST)
         }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_PERMISSIONS) {
-            var allGranted = true
-            if (grantResults.isEmpty()) allGranted = false
-            for (res in grantResults) {
-                if (res != PackageManager.PERMISSION_GRANTED) {
-                    allGranted = false
-                    break
-                }
-            }
-            if (allGranted) {
-                startLostService()
+        if (requestCode == PERMISSIONS_REQUEST) {
+            // simple feedback
+            if (grantResults.any { it != PackageManager.PERMISSION_GRANTED }) {
+                Toast.makeText(this, "Permissions are required for ARIA to function", Toast.LENGTH_LONG).show()
             } else {
-                // Permissions denied: inform user via UI (minimal)
-                lostModeStatus.text = "Lost Mode: permissions denied"
+                Toast.makeText(this, "Permissions granted", Toast.LENGTH_SHORT).show()
             }
         }
-    }
-
-    private fun startLostService() {
-        val intent = Intent(this, LostModeService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
-        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 }
