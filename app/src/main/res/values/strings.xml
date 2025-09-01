@@ -1,5 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- App Name -->
     <string name="app_name">A.R.I.A</string>
+
+    <!-- Device Admin prompts -->
     <string name="device_admin_enable_title">Enable A.R.I.A. Device Admin</string>
     <string name="device_admin_enable_text">Required to use Lost Mode locking features.</string>
+
+    <!-- Status labels (used in activity_main.xml and code) -->
+    <string name="lost_mode_status">Lost Mode: %1$s</string>
+    <string name="gps_status">GPS: %1$s</string>
+    <string name="connection_status">Connection: %1$s</string>
+
+    <!-- Button labels -->
+    <string name="start_service">Start Service</string>
+    <string name="stop_service">Stop Service</string>
+
+    <!-- Default state values -->
+    <string name="status_unknown">Unknown</string>
+    <string name="status_enabled">Enabled</string>
+    <string name="status_disabled">Disabled</string>
+    <string name="status_connected">Connected</string>
+    <string name="status_disconnected">Disconnected</string>
 </resources>
