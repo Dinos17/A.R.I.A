@@ -64,13 +64,12 @@ class LostModeService : Service() {
 
     private fun startLocationUpdates() {
         val request = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // New builder API (preferred)
             LocationRequest.Builder(30_000)
                 .setMinUpdateIntervalMillis(15_000)
                 .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
                 .build()
         } else {
-            // Fallback for older API (may be deprecated but safe)
+            @Suppress("DEPRECATION")
             LocationRequest.create().apply {
                 interval = 30_000
                 fastestInterval = 15_000
@@ -86,10 +85,10 @@ class LostModeService : Service() {
     }
 
     private val locationCallback = object : LocationCallback() {
-        override fun onLocationResult(result: LocationResult?) {
-            val loc: Location? = result?.lastLocation
+        override fun onLocationResult(result: LocationResult) {
+            val loc: Location? = result.lastLocation
             loc?.let {
-                // Send to server and handle returned commands (if any)
+                // Send location to server and handle commands
                 NetworkClient.sendLocationToServer(it) { json ->
                     handleServerCommands(json)
                 }
@@ -98,15 +97,9 @@ class LostModeService : Service() {
     }
 
     private fun handleServerCommands(json: org.json.JSONObject) {
-        // Expected server keys: lock (boolean), play_sound (boolean), alert_text (string)
         try {
-            if (json.optBoolean("lock", false)) {
-                lockDevice()
-            }
-            if (json.optBoolean("play_sound", false)) {
-                playAlertSound()
-            }
-            // future: parse more commands here
+            if (json.optBoolean("lock", false)) lockDevice()
+            if (json.optBoolean("play_sound", false)) playAlertSound()
         } catch (ex: Exception) {
             ex.printStackTrace()
         }
@@ -129,7 +122,7 @@ class LostModeService : Service() {
         try {
             val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            stopAlertSound() // stop previous if playing
+            stopAlertSound()
             lastRingtone = RingtoneManager.getRingtone(applicationContext, uri)
             lastRingtone?.play()
             Log.i(TAG, "Playing alert ringtone.")
@@ -139,14 +132,10 @@ class LostModeService : Service() {
     }
 
     private fun stopAlertSound() {
-        try {
-            lastRingtone?.let {
-                if (it.isPlaying) it.stop()
-            }
-            lastRingtone = null
-        } catch (ex: Exception) {
-            ex.printStackTrace()
+        lastRingtone?.let {
+            if (it.isPlaying) it.stop()
         }
+        lastRingtone = null
     }
 
     override fun onDestroy() {
