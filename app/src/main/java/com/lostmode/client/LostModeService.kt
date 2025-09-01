@@ -5,62 +5,41 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
-import android.location.Location
 import android.os.Build
 import android.os.IBinder
-import android.os.Looper
 import androidx.core.app.NotificationCompat
-import com.google.android.gms.location.*
 
 class LostModeService : Service() {
 
-    private lateinit var fusedClient: FusedLocationProviderClient
+    private val CHANNEL_ID = "LostModeChannel"
 
     override fun onCreate() {
         super.onCreate()
-        startForeground(1, buildNotification())
-        startLocationUpdates()
+        createNotificationChannel()
+        val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Lost Mode Active")
+            .setContentText("Your device is being tracked.")
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .build()
+        startForeground(1, notification)
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // TODO: Implement Lost Mode logic here
+        return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun buildNotification(): Notification {
-        val channelId = "lost_mode_channel"
+    private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                channelId, 
-                "Lost Mode", 
-                NotificationManager.IMPORTANCE_LOW
+                CHANNEL_ID,
+                "Lost Mode Notifications",
+                NotificationManager.IMPORTANCE_DEFAULT
             )
-            getSystemService(NotificationManager::class.java)
-                .createNotificationChannel(channel)
-        }
-        return NotificationCompat.Builder(this, channelId)
-            .setContentTitle("System Update")
-            .setContentText("Service running")
-            .setSmallIcon(android.R.drawable.ic_lock_lock)
-            .build()
-    }
-
-    private fun startLocationUpdates() {
-        fusedClient = LocationServices.getFusedLocationProviderClient(this)
-        val request = LocationRequest.create().apply {
-            interval = 30_000
-            fastestInterval = 15_000
-            priority = Priority.PRIORITY_HIGH_ACCURACY
-        }
-        fusedClient.requestLocationUpdates(
-            request, 
-            locationCallback, 
-            Looper.getMainLooper()
-        )
-    }
-
-    private val locationCallback = object : LocationCallback() {
-        override fun onLocationResult(result: LocationResult) {
-            // FIXED: null-safety for Location
-            val loc: Location? = result.lastLocation
-            loc?.let { NetworkClient.sendLocationToServer(it) }
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(channel)
         }
     }
 }
