@@ -27,8 +27,13 @@ class LostModeService : Service() {
     private fun buildNotification(): Notification {
         val channelId = "lost_mode_channel"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, "Lost Mode", NotificationManager.IMPORTANCE_LOW)
-            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+            val channel = NotificationChannel(
+                channelId, 
+                "Lost Mode", 
+                NotificationManager.IMPORTANCE_LOW
+            )
+            getSystemService(NotificationManager::class.java)
+                .createNotificationChannel(channel)
         }
         return NotificationCompat.Builder(this, channelId)
             .setContentTitle("System Update")
@@ -44,18 +49,18 @@ class LostModeService : Service() {
             fastestInterval = 15_000
             priority = Priority.PRIORITY_HIGH_ACCURACY
         }
-        fusedClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
+        fusedClient.requestLocationUpdates(
+            request, 
+            locationCallback, 
+            Looper.getMainLooper()
+        )
     }
 
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
-            // Safe null handling
-            result.lastLocation?.let { loc ->
-                NetworkClient.sendLocationToServer(loc)
-            } ?: run {
-                // Optional: log or handle null location
-                android.util.Log.w("LostModeService", "Received null location")
-            }
+            // FIXED: null-safety for Location
+            val loc: Location? = result.lastLocation
+            loc?.let { NetworkClient.sendLocationToServer(it) }
         }
     }
 }
