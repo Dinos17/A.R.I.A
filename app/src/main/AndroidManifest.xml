@@ -1,11 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.lostmode.client">
 
-    <!-- Permissions -->
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Permissions for Lost Mode functionality -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
 
     <application
         android:allowBackup="true"
@@ -15,6 +15,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.LostModeClient">
 
+        <!-- Main launcher activity -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -24,6 +25,7 @@
             </intent-filter>
         </activity>
 
+        <!-- Device Admin Receiver for Lost Mode activation -->
         <receiver
             android:name=".AriaDeviceAdminReceiver"
             android:permission="android.permission.BIND_DEVICE_ADMIN"
@@ -31,14 +33,16 @@
             <intent-filter>
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED"/>
             </intent-filter>
-            <meta-data android:name="android.app.device_admin"
-                android:resource="@xml/device_admin" />
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin"/>
         </receiver>
 
+        <!-- Foreground Service for GPS tracking and connectivity monitoring -->
         <service
             android:name=".LostModeService"
             android:foregroundServiceType="location"
-            android:exported="false" />
+            android:exported="false"/>
 
     </application>
 </manifest>
