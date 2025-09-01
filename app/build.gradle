@@ -17,7 +17,6 @@ android {
 
     buildTypes {
         release {
-            // Unsigned release - CI can sign later or you can add signingConfigs
             minifyEnabled false
         }
         debug {
@@ -34,7 +33,6 @@ android {
         jvmTarget = "17"
     }
 
-    // Prevent AAPT errors when resources missing in debug build on CI (optional)
     packagingOptions {
         jniLibs {
             useLegacyPackaging = true
