@@ -1,2 +1,3 @@
-rootProject.name = "A.R.I.A"
+// settings.gradle
+rootProject.name = "ARIA"
 include ':app'
