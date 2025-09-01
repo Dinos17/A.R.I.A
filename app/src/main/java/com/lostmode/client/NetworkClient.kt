@@ -1,33 +1,56 @@
 package com.lostmode.client
 
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.OkHttpClient
-import okhttp3.Request
+import android.location.Location
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
-import java.util.concurrent.TimeUnit
+import org.json.JSONObject
+import java.io.IOException
 
 object NetworkClient {
-    // Replace with your server endpoint. Use HTTPS in production.
-    private const val SERVER_URL = "http://192.168.1.102:5000/receive_location"
+    private val client: OkHttpClient by lazy {
+        OkHttpClient.Builder().build()
+    }
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
-        .build()
+    private val JSON = "application/json; charset=utf-8".toMediaType()
 
-    fun sendLocation(lat: Double, lon: Double) {
-        try {
-            val payload = "{\"lat\":$lat,\"lon\":$lon}"
-            val body = payload.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
-            val req = Request.Builder()
-                .url(SERVER_URL)
-                .post(body)
-                .build()
-            client.newCall(req).execute().use { resp ->
-                // Optionally observe resp.isSuccessful
-            }
-        } catch (e: Exception) {
-            // Swallow; service will retry logic can be added
+    /**
+     * Send location to server asynchronously.
+     * onCommands will be invoked with the server JSON response (if any).
+     */
+    fun sendLocationToServer(location: Location, onCommands: ((JSONObject) -> Unit)? = null) {
+        val payload = JSONObject().apply {
+            put("lat", location.latitude)
+            put("lng", location.longitude)
+            put("accuracy", location.accuracy)
+            put("timestamp", System.currentTimeMillis())
         }
+
+        val body = payload.toString().toRequestBody(JSON)
+        val req = Request.Builder()
+            .url(Config.UPDATE_ENDPOINT)
+            .post(body)
+            .build()
+
+        client.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                // network failure — optionally log
+                e.printStackTrace()
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    val text = it.body?.string()
+                    if (!text.isNullOrEmpty()) {
+                        try {
+                            val json = JSONObject(text)
+                            onCommands?.invoke(json)
+                        } catch (ex: Exception) {
+                            ex.printStackTrace()
+                        }
+                    }
+                }
+            }
+        })
     }
 }
