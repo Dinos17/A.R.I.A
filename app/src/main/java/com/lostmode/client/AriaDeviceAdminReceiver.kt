@@ -7,10 +7,10 @@ import android.widget.Toast
 
 class AriaDeviceAdminReceiver : DeviceAdminReceiver() {
     override fun onEnabled(context: Context, intent: Intent) {
-        Toast.makeText(context, "Device Admin Enabled", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "A.R.I.A. Device Admin enabled", Toast.LENGTH_SHORT).show()
     }
 
     override fun onDisabled(context: Context, intent: Intent) {
-        Toast.makeText(context, "Device Admin Disabled", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "A.R.I.A. Device Admin disabled", Toast.LENGTH_SHORT).show()
     }
 }
