@@ -1,12 +1,12 @@
 package com.lostmode.client
 
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
 import android.content.Context
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.os.Handler
 import android.os.Looper
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
 
 object RemoteCommandManager {
 
@@ -14,8 +14,10 @@ object RemoteCommandManager {
         when (command.trim().lowercase()) {
             "lock" -> lockDevice(context)
             "sound" -> playAlarm()
-            // "wipe" -> wipeDevice(context) // implement with caution
-            else -> { /* unknown */ }
+            // intentionally no "wipe" command
+            else -> {
+                // unknown command
+            }
         }
     }
 
@@ -28,7 +30,6 @@ object RemoteCommandManager {
     }
 
     private fun playAlarm() {
-        // short beep sequence
         val tone = ToneGenerator(AudioManager.STREAM_ALARM, 100)
         val handler = Handler(Looper.getMainLooper())
         handler.post {
