@@ -43,17 +43,13 @@ class MainActivity : Activity() {
             connStatus.text = "Connection: stopped"
         }
 
-        // Observe status from service
         LostModeService.statusLiveData.observe(this, Observer { status ->
             lostModeStatus.text = "Lost Mode: ${if (status.isActive) "Active" else "Inactive"}"
             gpsStatus.text = "GPS: ${status.lastCoordinates}"
             connStatus.text = "Connection: ${status.connectionStatus}"
         })
 
-        // Ensure device admin
         ensureDeviceAdmin()
-
-        // Check location permission & request if necessary
         checkAndRequestPermissions()
     }
 
@@ -63,7 +59,7 @@ class MainActivity : Activity() {
         if (!dpm.isAdminActive(compName)) {
             val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
             intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, compName)
-            intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Required to enable Lost Mode")
+            intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, getString(R.string.device_admin_enable_text))
             startActivity(intent)
         }
     }
@@ -79,7 +75,6 @@ class MainActivity : Activity() {
         if (perms.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, perms.toTypedArray(), REQUEST_PERMISSIONS)
         } else {
-            // start service automatically when permissions present
             startLostService()
         }
     }
@@ -93,5 +88,5 @@ class MainActivity : Activity() {
         }
     }
 
-    // onRequestPermissionsResult intentionally omitted for brevity - Android will call and service will post status if missing permissions
+    // Optional: handle onRequestPermissionsResult if you want to react immediately
 }
