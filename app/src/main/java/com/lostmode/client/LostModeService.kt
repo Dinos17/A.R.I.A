@@ -28,13 +28,13 @@ class LostModeService : Service() {
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationRequest: LocationRequest
+
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             val loc: Location? = result.lastLocation
             loc?.let {
                 val coords = "${it.latitude}, ${it.longitude}"
                 statusLiveData.postValue(LostModeStatus(true, coords, "connected"))
-                // send to server (network client handles exceptions)
                 NetworkClient.sendLocation(it.latitude, it.longitude)
             }
         }
@@ -68,7 +68,6 @@ class LostModeService : Service() {
     }
 
     private fun configureLocationRequest() {
-        // Using deprecated API for wide compatibility; if you prefer use LocationRequest.Builder on newer libs.
         locationRequest = LocationRequest.create().apply {
             interval = 30_000
             fastestInterval = 15_000
@@ -80,7 +79,6 @@ class LostModeService : Service() {
         try {
             fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper())
         } catch (e: SecurityException) {
-            // location permissions missing — UI should request
             statusLiveData.postValue(LostModeStatus(true, "permission_denied", "no-gps"))
         }
     }
