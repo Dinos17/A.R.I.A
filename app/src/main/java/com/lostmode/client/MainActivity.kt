@@ -5,12 +5,12 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
-import android.widget.Toast
 
 class MainActivity : AppCompatActivity() {
 
@@ -25,10 +25,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Request runtime permissions if not granted
+        // Request necessary permissions
         requestNeededPermissions()
 
-        // Launch device admin prompt to allow locking
+        // Launch device admin prompt to enable locking features
         val dpm = getSystemService(DevicePolicyManager::class.java)
         val compName = ComponentName(this, AriaDeviceAdminReceiver::class.java)
         if (!dpm.isAdminActive(compName)) {
@@ -38,7 +38,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
-        // Start foreground service (LostModeService)
+        // Start LostModeService as foreground service
         val svcIntent = Intent(this, LostModeService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             ContextCompat.startForegroundService(this, svcIntent)
@@ -46,9 +46,10 @@ class MainActivity : AppCompatActivity() {
             startService(svcIntent)
         }
 
-        Toast.makeText(this, "ARIA service is starting", Toast.LENGTH_SHORT).show()
-        // Optionally finish the activity if you want it to disappear immediately:
-        // finish()
+        Toast.makeText(this, "ARIA service starting...", Toast.LENGTH_SHORT).show()
+
+        // Close activity immediately for stealth operation
+        finish()
     }
 
     private fun requestNeededPermissions() {
@@ -60,11 +61,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int, 
+        permissions: Array<out String>, 
+        grantResults: IntArray
+    ) {
         if (requestCode == PERMISSIONS_REQUEST) {
-            // simple feedback
             if (grantResults.any { it != PackageManager.PERMISSION_GRANTED }) {
-                Toast.makeText(this, "Permissions are required for ARIA to function", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this, 
+                    "Permissions are required for ARIA to function", 
+                    Toast.LENGTH_LONG
+                ).show()
             } else {
                 Toast.makeText(this, "Permissions granted", Toast.LENGTH_SHORT).show()
             }
