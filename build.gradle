@@ -1,4 +1,4 @@
-// Root-level build.gradle
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
 
 buildscript {
     repositories {
@@ -6,7 +6,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath "com.android.tools.build:gradle:8.1.4" // Adjust if needed
+        classpath "com.android.tools.build:gradle:8.1.1"  // Update to match compileSdk
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0"
     }
 }
@@ -18,7 +18,6 @@ allprojects {
     }
 }
 
-// Optional cleanup task
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
