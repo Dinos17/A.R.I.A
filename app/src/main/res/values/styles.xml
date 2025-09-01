@@ -1,5 +1,5 @@
 <resources>
     <style name="Theme.LostModeClient" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <!-- Customize your theme here -->
+        <item name="android:statusBarColor">?attr/colorPrimaryDark</item>
     </style>
 </resources>
