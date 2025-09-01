@@ -1,2 +1,5 @@
+// Set the project name
 rootProject.name = "ARIA"
+
+// Include the main app module
 include ':app'
