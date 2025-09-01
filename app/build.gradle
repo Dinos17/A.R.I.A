@@ -3,8 +3,8 @@ plugins {
     id 'kotlin-android'
 }
 
-android {`r`n    namespace 'com.lostmode.client'
-    namespace "com.lostmode.client"  // <--- Added namespace
+android {
+    namespace "com.lostmode.client"
     compileSdk 34
 
     defaultConfig {
@@ -18,7 +18,7 @@ android {`r`n    namespace 'com.lostmode.client'
     buildTypes {
         release {
             minifyEnabled false
-            signingConfig null
+            // No signingConfig needed if unsigned release
         }
     }
 }
@@ -28,5 +28,5 @@ dependencies {
     implementation 'com.google.android.gms:play-services-location:21.0.1'
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.7.0'
-    implementation 'com.google.android.material:material:1.9.0' // <-- add this
+    implementation 'com.google.android.material:material:1.9.0'
 }
