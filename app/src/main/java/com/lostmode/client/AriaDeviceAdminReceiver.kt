@@ -1,11 +1,18 @@
 package com.lostmode.client
 
-object Config {
-    // Your server IP or domain (change as needed)
-    const val SERVER_IP = "192.168.1.100"  // replace with your old phone/server IP
-    const val SERVER_PORT = 5000           // optional, if your server uses a specific port
+import android.app.admin.DeviceAdminReceiver
+import android.content.Context
+import android.content.Intent
+import android.widget.Toast
 
-    // Full endpoint for sending location updates
-    val UPDATE_ENDPOINT: String
-        get() = "http://$SERVER_IP:$SERVER_PORT/update_location"
+class AriaDeviceAdminReceiver : DeviceAdminReceiver() {
+
+    override fun onEnabled(context: Context, intent: Intent) {
+        Toast.makeText(context, "ARIA device admin enabled", Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onDisabled(context: Context, intent: Intent) {
+        Toast.makeText(context, "ARIA device admin disabled", Toast.LENGTH_SHORT).show()
+    }
+
 }
