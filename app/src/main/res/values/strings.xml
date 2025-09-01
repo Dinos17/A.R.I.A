@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">A.R.I.A</string>
+    <string name="device_admin_enable_title">Enable A.R.I.A. Device Admin</string>
+    <string name="device_admin_enable_text">Required to use Lost Mode locking features.</string>
 </resources>
