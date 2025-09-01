@@ -49,8 +49,13 @@ class LostModeService : Service() {
 
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
-            val loc: Location = result.lastLocation
-            NetworkClient.sendLocationToServer(loc)
+            // Safe null handling
+            result.lastLocation?.let { loc ->
+                NetworkClient.sendLocationToServer(loc)
+            } ?: run {
+                // Optional: log or handle null location
+                android.util.Log.w("LostModeService", "Received null location")
+            }
         }
     }
 }
