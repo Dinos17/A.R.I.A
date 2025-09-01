@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies>
+        <!-- Keep lock and admin functionality but NO wipe-data -->
+        <limit-password />
+        <reset-password />
+        <watch-login />
+        <force-lock />
+        <!-- intentionally omitted: <wipe-data /> -->
+    </uses-policies>
+</device-admin>
