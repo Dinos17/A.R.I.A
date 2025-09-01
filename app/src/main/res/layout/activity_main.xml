@@ -1,13 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
-    android:gravity="center"
+    android:id="@+id/rootLayout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="20dp">
 
     <TextView
-        android:text="Lost Mode Client"
-        android:textSize="24sp"
+        android:id="@+id/lostModeStatus"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:text="Lost Mode: Unknown"
+        android:textSize="18sp"
+        android:paddingBottom="12dp"/>
+
+    <TextView
+        android:id="@+id/gpsStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="GPS: Unknown"
+        android:textSize="16sp"
+        android:paddingBottom="8dp"/>
+
+    <TextView
+        android:id="@+id/connStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Connection: Unknown"
+        android:textSize="16sp"
+        android:paddingBottom="12dp"/>
+
+    <Button
+        android:id="@+id/btnStartService"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Start Service"/>
+
+    <Button
+        android:id="@+id/btnStopService"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Stop Service"
+        android:layout_marginTop="8dp"/>
+
 </LinearLayout>
