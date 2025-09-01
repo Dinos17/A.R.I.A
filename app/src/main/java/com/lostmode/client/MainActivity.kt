@@ -1,7 +1,6 @@
 package com.lostmode.client
 
 import android.Manifest
-import android.app.Activity
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
@@ -11,10 +10,12 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
+import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.Observer
 
-class MainActivity : Activity() {
+class MainActivity : AppCompatActivity() {
 
     private lateinit var lostModeStatus: TextView
     private lateinit var gpsStatus: TextView
@@ -35,7 +36,7 @@ class MainActivity : Activity() {
         btnStop = findViewById(R.id.btnStopService)
 
         btnStart.setOnClickListener {
-            startLostService()
+            checkAndRequestPermissions()
         }
         btnStop.setOnClickListener {
             stopService(Intent(this, LostModeService::class.java))
@@ -43,6 +44,7 @@ class MainActivity : Activity() {
             connStatus.text = "Connection: stopped"
         }
 
+        // Observe LiveData from the Service
         LostModeService.statusLiveData.observe(this, Observer { status ->
             lostModeStatus.text = "Lost Mode: ${if (status.isActive) "Active" else "Inactive"}"
             gpsStatus.text = "GPS: ${status.lastCoordinates}"
@@ -50,7 +52,6 @@ class MainActivity : Activity() {
         })
 
         ensureDeviceAdmin()
-        checkAndRequestPermissions()
     }
 
     private fun ensureDeviceAdmin() {
@@ -72,10 +73,33 @@ class MainActivity : Activity() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
             perms.add(Manifest.permission.SEND_SMS)
         }
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            perms.add(Manifest.permission.ACCESS_COARSE_LOCATION)
+        }
         if (perms.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, perms.toTypedArray(), REQUEST_PERMISSIONS)
         } else {
             startLostService()
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_PERMISSIONS) {
+            var allGranted = true
+            if (grantResults.isEmpty()) allGranted = false
+            for (res in grantResults) {
+                if (res != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false
+                    break
+                }
+            }
+            if (allGranted) {
+                startLostService()
+            } else {
+                // Permissions denied: inform user via UI (minimal)
+                lostModeStatus.text = "Lost Mode: permissions denied"
+            }
         }
     }
 
@@ -87,6 +111,4 @@ class MainActivity : Activity() {
             startService(intent)
         }
     }
-
-    // Optional: handle onRequestPermissionsResult if you want to react immediately
 }
