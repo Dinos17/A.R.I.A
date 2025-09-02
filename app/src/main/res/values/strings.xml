@@ -22,4 +22,16 @@
     <string name="status_disabled">Disabled</string>
     <string name="status_connected">Connected</string>
     <string name="status_disconnected">Disconnected</string>
+
+    <!-- Accessibility descriptions -->
+    <string name="lost_mode_status_desc">Displays current Lost Mode status</string>
+    <string name="gps_status_desc">Displays current GPS status</string>
+    <string name="connection_status_desc">Displays current connection status</string>
+    <string name="start_service_desc">Starts the ARIA background service</string>
+    <string name="stop_service_desc">Stops the ARIA background service</string>
+
+    <!-- Defaults for UI initialization -->
+    <string name="lost_mode_unknown">Lost Mode: Unknown</string>
+    <string name="gps_unknown">GPS: Unknown</string>
+    <string name="connection_unknown">Connection: Unknown</string>
 </resources>
