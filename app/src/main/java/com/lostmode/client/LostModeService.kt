@@ -21,8 +21,12 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.*
 import org.json.JSONObject
-import java.lang.Exception
 
+/**
+ * Robust foreground service used by ARIA.
+ * Compatible with Android 14 (SDK 34+).
+ * Handles location updates, device admin actions, and alert sounds.
+ */
 class LostModeService : Service() {
 
     companion object {
@@ -47,12 +51,12 @@ class LostModeService : Service() {
             compName = ComponentName(this, AriaDeviceAdminReceiver::class.java)
             fusedClient = LocationServices.getFusedLocationProviderClient(this)
 
-            // Check foreground service location permission for Android 14+
+            // Android 14+: check FOREGROUND_SERVICE_LOCATION
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
                 ContextCompat.checkSelfPermission(this, Manifest.permission.FOREGROUND_SERVICE_LOCATION)
                     != PackageManager.PERMISSION_GRANTED
             ) {
-                Log.e(TAG, "Missing FOREGROUND_SERVICE_LOCATION permission — service will not start location updates")
+                Log.e(TAG, "Missing FOREGROUND_SERVICE_LOCATION permission — location updates will not start")
             }
 
             startForeground(NOTIF_ID, buildNotification())
@@ -73,8 +77,9 @@ class LostModeService : Service() {
             val nm = getSystemService(NotificationManager::class.java)
             if (nm.getNotificationChannel(CHANNEL_ID) == null) {
                 nm.createNotificationChannel(
-                    NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW)
-                        .apply { description = "ARIA background service" }
+                    NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW).apply {
+                        description = "ARIA background service"
+                    }
                 )
             }
         }
@@ -177,13 +182,13 @@ class LostModeService : Service() {
     }
 
     private fun stopAlertSound() {
-        try { lastRingtone?.takeIf { it.isPlaying }?.stop(); lastRingtone = null } 
+        try { lastRingtone?.takeIf { it.isPlaying }?.stop(); lastRingtone = null }
         catch (ex: Exception) { Log.e(TAG, "Failed to stop ringtone: ${ex.message}", ex) }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        try { fusedClient.removeLocationUpdates(locationCallback) } 
+        try { fusedClient.removeLocationUpdates(locationCallback) }
         catch (ex: Exception) { Log.w(TAG, "Failed to remove location updates: ${ex.message}") }
         stopAlertSound()
         Log.i(TAG, "Service destroyed")
