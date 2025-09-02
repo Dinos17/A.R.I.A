@@ -42,7 +42,8 @@
     <!-- Button text appearance -->
     <style name="TextAppearance.LostModeClient.Button" parent="TextAppearance.MaterialComponents.Button">
         <item name="android:textSize">16sp</item>
-        <item name="android:fontFamily">@android:font/sans-serif-medium</item>
+        <!-- Use literal family name instead of @android:font resource -->
+        <item name="android:fontFamily">sans-serif-medium</item>
     </style>
 
 </resources>
