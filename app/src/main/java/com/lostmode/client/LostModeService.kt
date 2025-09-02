@@ -23,9 +23,9 @@ import com.google.android.gms.location.*
 import org.json.JSONObject
 
 /**
- * Robust foreground service used by ARIA.
- * Compatible with Android 14 (SDK 34+).
- * Handles location updates, device admin actions, and alert sounds.
+ * ARIA Lost Mode Foreground Service
+ * Fully compatible with Android 14+ (API 34)
+ * Handles location updates, device locking, and alert sounds.
  */
 class LostModeService : Service() {
 
@@ -51,10 +51,12 @@ class LostModeService : Service() {
             compName = ComponentName(this, AriaDeviceAdminReceiver::class.java)
             fusedClient = LocationServices.getFusedLocationProviderClient(this)
 
-            // Android 14+: check FOREGROUND_SERVICE_LOCATION
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
-                ContextCompat.checkSelfPermission(this, Manifest.permission.FOREGROUND_SERVICE_LOCATION)
-                    != PackageManager.PERMISSION_GRANTED
+            // Verify Android 14 FOREGROUND_SERVICE_LOCATION permission
+            if (Build.VERSION.SDK_INT >= 34 &&
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.FOREGROUND_SERVICE_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED
             ) {
                 Log.e(TAG, "Missing FOREGROUND_SERVICE_LOCATION permission — location updates will not start")
             }
@@ -66,9 +68,7 @@ class LostModeService : Service() {
         }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return START_STICKY
-    }
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -83,6 +83,7 @@ class LostModeService : Service() {
                 )
             }
         }
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("System Update")
             .setContentText("Service running")
@@ -140,7 +141,9 @@ class LostModeService : Service() {
                     NetworkClient.sendLocationToServer(loc) { json ->
                         try { handleServerCommands(json) } catch (ex: Exception) { Log.e(TAG, ex.message ?: "", ex) }
                     }
-                } else Log.w(TAG, "LocationResult has null lastLocation")
+                } else {
+                    Log.w(TAG, "LocationResult has null lastLocation")
+                }
             } catch (ex: Exception) {
                 Log.e(TAG, "onLocationResult exception: ${ex.message}", ex)
             }
@@ -162,7 +165,9 @@ class LostModeService : Service() {
             if (dpm.isAdminActive(compName)) {
                 dpm.lockNow()
                 Log.i(TAG, "Device locked by command.")
-            } else Log.w(TAG, "Device admin not active — cannot lock.")
+            } else {
+                Log.w(TAG, "Device admin not active — cannot lock.")
+            }
         } catch (ex: Exception) {
             Log.e(TAG, "Failed to lock device: ${ex.message}", ex)
         }
@@ -182,15 +187,22 @@ class LostModeService : Service() {
     }
 
     private fun stopAlertSound() {
-        try { lastRingtone?.takeIf { it.isPlaying }?.stop(); lastRingtone = null }
-        catch (ex: Exception) { Log.e(TAG, "Failed to stop ringtone: ${ex.message}", ex) }
+        try {
+            lastRingtone?.takeIf { it.isPlaying }?.stop()
+            lastRingtone = null
+        } catch (ex: Exception) {
+            Log.e(TAG, "Failed to stop ringtone: ${ex.message}", ex)
+        }
     }
 
     override fun onDestroy() {
-        super.onDestroy()
-        try { fusedClient.removeLocationUpdates(locationCallback) }
-        catch (ex: Exception) { Log.w(TAG, "Failed to remove location updates: ${ex.message}") }
+        try {
+            fusedClient.removeLocationUpdates(locationCallback)
+        } catch (ex: Exception) {
+            Log.w(TAG, "Failed to remove location updates: ${ex.message}")
+        }
         stopAlertSound()
         Log.i(TAG, "Service destroyed")
+        super.onDestroy()
     }
 }
