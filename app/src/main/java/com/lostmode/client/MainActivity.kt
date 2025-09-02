@@ -15,7 +15,7 @@ import android.content.ComponentName
 class MainActivity : AppCompatActivity() {
 
     private val PERMISSIONS_REQUEST = 1234
-    private val requiredPermissions = arrayOf(
+    private val requiredPermissions = mutableListOf(
         Manifest.permission.ACCESS_FINE_LOCATION,
         Manifest.permission.ACCESS_COARSE_LOCATION,
         Manifest.permission.INTERNET
@@ -24,6 +24,11 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // Android 14+ requires FOREGROUND_SERVICE_LOCATION
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 34
+            requiredPermissions.add(Manifest.permission.FOREGROUND_SERVICE_LOCATION)
+        }
 
         // Request necessary permissions
         requestNeededPermissions()
