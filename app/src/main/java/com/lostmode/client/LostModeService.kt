@@ -23,13 +23,6 @@ import com.google.android.gms.location.*
 import org.json.JSONObject
 import java.lang.Exception
 
-/**
- * Robust foreground service used by ARIA.
- * - Checks permissions before asking for location updates
- * - Uses modern LocationRequest.Builder on newer APIs
- * - Catches exceptions so the service doesn't crash
- * - Returns START_STICKY so system will try to restart it
- */
 class LostModeService : Service() {
 
     companion object {
@@ -37,7 +30,6 @@ class LostModeService : Service() {
         private const val CHANNEL_ID = "lost_mode_channel"
         private const val CHANNEL_NAME = "System Services"
         private const val NOTIF_ID = 101
-        // location update intervals (ms)
         private const val INTERVAL_MS = 30_000L
         private const val FASTEST_MS = 15_000L
     }
@@ -55,20 +47,22 @@ class LostModeService : Service() {
             compName = ComponentName(this, AriaDeviceAdminReceiver::class.java)
             fusedClient = LocationServices.getFusedLocationProviderClient(this)
 
-            // Build + start foreground immediately
-            startForeground(NOTIF_ID, buildNotification())
+            // Check foreground service location permission for Android 14+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.FOREGROUND_SERVICE_LOCATION)
+                    != PackageManager.PERMISSION_GRANTED
+            ) {
+                Log.e(TAG, "Missing FOREGROUND_SERVICE_LOCATION permission — service will not start location updates")
+            }
 
-            // Start location updates (only if permission available)
+            startForeground(NOTIF_ID, buildNotification())
             startLocationUpdates()
         } catch (ex: Exception) {
-            // We MUST not let exceptions bubble up and crash the service
             Log.e(TAG, "onCreate exception: ${ex.message}", ex)
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.i(TAG, "onStartCommand")
-        // Keep running (best-effort restart by system)
         return START_STICKY
     }
 
@@ -77,19 +71,13 @@ class LostModeService : Service() {
     private fun buildNotification(): Notification {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val nm = getSystemService(NotificationManager::class.java)
-            val existing = nm.getNotificationChannel(CHANNEL_ID)
-            if (existing == null) {
-                val chan = NotificationChannel(
-                    CHANNEL_ID,
-                    CHANNEL_NAME,
-                    NotificationManager.IMPORTANCE_LOW
-                ).apply {
-                    description = "ARIA background service"
-                }
-                nm.createNotificationChannel(chan)
+            if (nm.getNotificationChannel(CHANNEL_ID) == null) {
+                nm.createNotificationChannel(
+                    NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW)
+                        .apply { description = "ARIA background service" }
+                )
             }
         }
-
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("System Update")
             .setContentText("Service running")
@@ -106,32 +94,23 @@ class LostModeService : Service() {
 
     private fun startLocationUpdates() {
         if (!hasLocationPermission()) {
-            Log.w(TAG, "Location permission not granted — not requesting updates.")
+            Log.w(TAG, "Location permission not granted — skipping updates.")
             return
         }
 
         val request: LocationRequest = try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                // Newer API: LocationRequest.Builder
                 LocationRequest.Builder(INTERVAL_MS)
                     .setMinUpdateIntervalMillis(FASTEST_MS)
                     .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
                     .build()
             } else {
-                // Legacy API (works on older dependencies)
                 LocationRequest.create().apply {
                     interval = INTERVAL_MS
                     fastestInterval = FASTEST_MS
                     priority = LocationRequest.PRIORITY_HIGH_ACCURACY
                 }
             }
-        } catch (ex: NoSuchMethodError) {
-            // Fallback for older play services versions
-            val legacy = LocationRequest.create()
-            legacy.interval = INTERVAL_MS
-            legacy.fastestInterval = FASTEST_MS
-            legacy.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-            legacy
         } catch (ex: Exception) {
             Log.e(TAG, "Failed to build LocationRequest: ${ex.message}", ex)
             return
@@ -141,54 +120,33 @@ class LostModeService : Service() {
             fusedClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
             Log.i(TAG, "Location updates requested.")
         } catch (secEx: SecurityException) {
-            // Shouldn't happen because we checked earlier — but handle gracefully
             Log.w(TAG, "SecurityException requesting location updates: ${secEx.message}")
         } catch (ex: Exception) {
             Log.e(TAG, "Exception requesting location updates: ${ex.message}", ex)
         }
     }
 
-    // Correct signature: override fun onLocationResult(result: LocationResult)
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             try {
                 val loc: Location? = result.lastLocation
-                if (loc == null) {
-                    Log.w(TAG, "LocationResult has null lastLocation")
-                    return
-                }
-                Log.d(TAG, "Got location: ${loc.latitude}, ${loc.longitude} (acc=${loc.accuracy})")
-
-                // Send location to server — network is done async and is tolerant of failures
-                NetworkClient.sendLocationToServer(loc) { json ->
-                    // This callback may be invoked on an OKHttp worker thread — keep it safe
-                    try {
-                        handleServerCommands(json)
-                    } catch (ex: Exception) {
-                        Log.e(TAG, "handleServerCommands error: ${ex.message}", ex)
+                if (loc != null) {
+                    Log.d(TAG, "Got location: ${loc.latitude}, ${loc.longitude} (acc=${loc.accuracy})")
+                    NetworkClient.sendLocationToServer(loc) { json ->
+                        try { handleServerCommands(json) } catch (ex: Exception) { Log.e(TAG, ex.message ?: "", ex) }
                     }
-                }
+                } else Log.w(TAG, "LocationResult has null lastLocation")
             } catch (ex: Exception) {
                 Log.e(TAG, "onLocationResult exception: ${ex.message}", ex)
             }
         }
     }
 
-    /**
-     * Parse server response and execute commands (lock/play sound)
-     * Expected JSON keys:
-     *  {"lock": true, "play_sound": true, "alert_text":"..."}
-     */
     private fun handleServerCommands(json: JSONObject) {
         try {
             Log.d(TAG, "Server response: $json")
-            if (json.optBoolean("lock", false)) {
-                lockDevice()
-            }
-            if (json.optBoolean("play_sound", false)) {
-                playAlertSound()
-            }
-            // Future: support stop_sound, set_password, sms_fallback, etc.
+            if (json.optBoolean("lock", false)) lockDevice()
+            if (json.optBoolean("play_sound", false)) playAlertSound()
         } catch (ex: Exception) {
             Log.e(TAG, "handleServerCommands parse error: ${ex.message}", ex)
         }
@@ -199,9 +157,7 @@ class LostModeService : Service() {
             if (dpm.isAdminActive(compName)) {
                 dpm.lockNow()
                 Log.i(TAG, "Device locked by command.")
-            } else {
-                Log.w(TAG, "Device admin not active — cannot lock.")
-            }
+            } else Log.w(TAG, "Device admin not active — cannot lock.")
         } catch (ex: Exception) {
             Log.e(TAG, "Failed to lock device: ${ex.message}", ex)
         }
@@ -221,23 +177,14 @@ class LostModeService : Service() {
     }
 
     private fun stopAlertSound() {
-        try {
-            lastRingtone?.let {
-                if (it.isPlaying) it.stop()
-            }
-            lastRingtone = null
-        } catch (ex: Exception) {
-            Log.e(TAG, "Failed to stop ringtone: ${ex.message}", ex)
-        }
+        try { lastRingtone?.takeIf { it.isPlaying }?.stop(); lastRingtone = null } 
+        catch (ex: Exception) { Log.e(TAG, "Failed to stop ringtone: ${ex.message}", ex) }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        try {
-            fusedClient.removeLocationUpdates(locationCallback)
-        } catch (ex: Exception) {
-            Log.w(TAG, "Failed to remove location updates: ${ex.message}")
-        }
+        try { fusedClient.removeLocationUpdates(locationCallback) } 
+        catch (ex: Exception) { Log.w(TAG, "Failed to remove location updates: ${ex.message}") }
         stopAlertSound()
         Log.i(TAG, "Service destroyed")
     }
