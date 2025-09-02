@@ -1,11 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        ARIA Device Admin Policies
+        These define what capabilities the DeviceAdminReceiver (AriaDeviceAdminReceiver)
+        will be able to request from the system.
+
+        Notes:
+        - We keep lock and password control to support Lost Mode functionality.
+        - Data wipe is intentionally excluded for safety.
+        - Compatible with Android 14+.
+    -->
     <uses-policies>
-        <!-- Keep lock and admin functionality but NO wipe-data -->
+        <!-- Control password complexity -->
         <limit-password />
+
+        <!-- Allow resetting the device password -->
         <reset-password />
+
+        <!-- Monitor failed login attempts -->
         <watch-login />
+
+        <!-- Force immediate device lock -->
         <force-lock />
-        <!-- intentionally omitted: <wipe-data /> -->
+
+        <!--
+            Omitted:
+            <wipe-data />
+            (Dangerous — would erase user data)
+        -->
     </uses-policies>
 </device-admin>
