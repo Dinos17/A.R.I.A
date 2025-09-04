@@ -64,6 +64,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // Start service but do not trigger Lost Mode location updates automatically
         val svcIntent = Intent(this, LostModeService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             ContextCompat.startForegroundService(this, svcIntent)
@@ -71,7 +72,8 @@ class MainActivity : AppCompatActivity() {
             startService(svcIntent)
         }
 
-        Toast.makeText(this, "ARIA service starting...", Toast.LENGTH_SHORT).show()
+        // Show that service is running but waiting for server command
+        Toast.makeText(this, "ARIA service running — waiting for command.", Toast.LENGTH_SHORT).show()
         finish()
     }
 
