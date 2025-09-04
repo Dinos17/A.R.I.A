@@ -212,5 +212,3 @@ Log.i(TAG, "Service destroyed")
 super.onDestroy()
 }
 }
-
-
