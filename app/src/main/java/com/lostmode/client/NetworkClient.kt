@@ -8,10 +8,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
 
-/**
- * Central network client for ARIA.
- * Handles sending location data to the server and safely processing JSON commands.
- */
 object NetworkClient {
 
     private const val TAG = "NetworkClient"
@@ -26,15 +22,16 @@ object NetworkClient {
 
     /**
      * Send location to server asynchronously.
-     * @param location Device location to send
-     * @param onCommands Optional callback invoked with JSON response from server
+     * Adds a Google Maps link for real-time tracking.
      */
     fun sendLocationToServer(location: Location, onCommands: ((JSONObject) -> Unit)? = null) {
+        val mapLink = "https://maps.google.com/?q=${location.latitude},${location.longitude}"
         val payload = JSONObject().apply {
             put("lat", location.latitude)
             put("lng", location.longitude)
             put("accuracy", location.accuracy)
             put("timestamp", System.currentTimeMillis())
+            put("map_link", mapLink)
         }
 
         val body = payload.toString().toRequestBody(JSON_MEDIA_TYPE)
