@@ -13,6 +13,7 @@
         android:layout_height="wrap_content"
         android:hint="Email"
         android:inputType="textEmailAddress"
+        android:importantForAutofill="yes"
         android:padding="12dp"
         android:layout_marginBottom="12dp"/>
 
@@ -22,6 +23,8 @@
         android:layout_height="wrap_content"
         android:hint="Password"
         android:inputType="textPassword"
+        android:imeOptions="actionDone"
+        android:importantForAutofill="yes"
         android:padding="12dp"
         android:layout_marginBottom="16dp"/>
 
