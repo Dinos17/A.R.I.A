@@ -6,6 +6,12 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
+/**
+ * RecyclerView Adapter to display devices.
+ *
+ * @param devices List of Device objects to display
+ * @param onClick Callback when a device is clicked
+ */
 class DeviceAdapter(
     private val devices: List<Device>,
     private val onClick: (Device) -> Unit
@@ -15,7 +21,10 @@ class DeviceAdapter(
         val txtName: TextView = view.findViewById(R.id.txtDeviceName)
         init {
             view.setOnClickListener {
-                onClick(devices[adapterPosition])
+                val position = bindingAdapterPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    onClick(devices[position])
+                }
             }
         }
     }
