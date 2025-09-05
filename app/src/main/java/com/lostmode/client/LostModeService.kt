@@ -40,6 +40,14 @@ class LostModeService : Service() {
         super.onCreate()
         try {
             Log.i(TAG, "Service onCreate")
+
+            // Only initialize if mode requires Lost Mode
+            if (!requiresLostMode()) {
+                Log.i(TAG, "Lost Mode not required for this device/mode. Service will run idle.")
+                startForeground(NOTIF_ID, buildNotification())
+                return
+            }
+
             dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
             compName = ComponentName(this, AriaDeviceAdminReceiver::class.java)
             fusedClient = LocationServices.getFusedLocationProviderClient(this)
@@ -147,5 +155,12 @@ class LostModeService : Service() {
         try { fusedClient.removeLocationUpdates(locationCallback) } catch (_: Exception) {}
         Log.i(TAG, "Service destroyed")
         super.onDestroy()
+    }
+
+    // --- Helpers to check user mode ---
+    private fun requiresLostMode(): Boolean {
+        val prefs = getSharedPreferences("ARIA_PREFS", Context.MODE_PRIVATE)
+        val mode = prefs.getString("user_mode", "AI")
+        return mode == "SECURE" || mode == "BOTH"
     }
 }
