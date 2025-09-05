@@ -13,6 +13,9 @@ object Config {
     // Base server URL
     const val SERVER_BASE: String = "http://192.168.1.147:5000"
 
+    // SharedPreferences key for auth token
+    const val PREFS_AUTH_TOKEN = "auth_token"
+
     // Endpoint to send device location updates
     val UPDATE_ENDPOINT: String
         get() = "$SERVER_BASE/api/update_location"
