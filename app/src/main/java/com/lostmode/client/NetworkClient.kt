@@ -11,15 +11,18 @@ import java.io.IOException
 
 /**
  * Handles all networking for the ARIA Lost Mode Client.
- * Uses the global OkHttpClient from AriaApp.
+ * Provides public access to the OkHttpClient for other classes.
  */
 object NetworkClient {
 
     private const val TAG = "NetworkClient"
 
-    // Use global OkHttpClient from AriaApp
-    private val client: OkHttpClient
-        get() = AriaApp.httpClient
+    // Public client so DeviceListActivity can access it
+    val client: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .retryOnConnectionFailure(true)
+            .build()
+    }
 
     private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
