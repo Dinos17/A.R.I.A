@@ -3,6 +3,7 @@ package com.lostmode.client
 import android.Manifest
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -33,7 +34,7 @@ class MainActivity : AppCompatActivity() {
             if (denied != null) {
                 Toast.makeText(this, "Permissions required: $denied", Toast.LENGTH_LONG).show()
             } else {
-                proceedAfterPermission()
+                proceedAfterPermissions()
             }
         }
 
@@ -41,14 +42,37 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        if (!hasAllPermissions()) {
-            requestPermissionsLauncher.launch(allPermissions)
+        // 1. Check if user is logged in
+        if (!isLoggedIn()) {
+            val loginIntent = Intent(this, LoginActivity::class.java)
+            startActivity(loginIntent)
+            finish()
+            return
+        }
+
+        // 2. Navigate to Mode Selection if mode not set
+        if (!isModeSelected()) {
+            val modeIntent = Intent(this, ModeSelectionActivity::class.java)
+            startActivity(modeIntent)
+            finish()
+            return
+        }
+
+        // 3. Check if Secure Device / Both modes are selected
+        if (requiresSecurePermissions()) {
+            if (!hasAllPermissions()) {
+                requestPermissionsLauncher.launch(allPermissions)
+            } else {
+                proceedAfterPermissions()
+            }
         } else {
-            proceedAfterPermission()
+            // AI Chat only → skip permissions and start main app
+            navigateToDevicesScreen()
         }
     }
 
-    private fun proceedAfterPermission() {
+    private fun proceedAfterPermissions() {
+        // 4. Device Admin check
         val dpm = getSystemService(DevicePolicyManager::class.java)
         val compName = ComponentName(this, AriaDeviceAdminReceiver::class.java)
 
@@ -56,15 +80,22 @@ class MainActivity : AppCompatActivity() {
             try {
                 val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
                     putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, compName)
-                    putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Required to enable Lost Mode features")
+                    putExtra(
+                        DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                        "Required to enable Lost Mode features"
+                    )
                 }
                 startActivity(intent)
             } catch (e: Exception) {
-                Toast.makeText(this, "Device Admin activation failed: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this,
+                    "Device Admin activation failed: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
 
-        // Start service but do not trigger Lost Mode location updates automatically
+        // 5. Start LostModeService
         val svcIntent = Intent(this, LostModeService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             ContextCompat.startForegroundService(this, svcIntent)
@@ -72,8 +103,12 @@ class MainActivity : AppCompatActivity() {
             startService(svcIntent)
         }
 
-        // Show that service is running but waiting for server command
-        Toast.makeText(this, "ARIA service running — waiting for command.", Toast.LENGTH_SHORT).show()
+        navigateToDevicesScreen()
+    }
+
+    private fun navigateToDevicesScreen() {
+        val devicesIntent = Intent(this, DevicesActivity::class.java)
+        startActivity(devicesIntent)
         finish()
     }
 
@@ -82,9 +117,29 @@ class MainActivity : AppCompatActivity() {
             if (ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED) return false
         }
         if (Build.VERSION.SDK_INT >= 34) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.FOREGROUND_SERVICE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) return false
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.FOREGROUND_SERVICE_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED
+            ) return false
         }
         return true
+    }
+
+    // --- Helpers for login/mode state ---
+    private fun isLoggedIn(): Boolean {
+        val prefs = getSharedPreferences("ARIA_PREFS", Context.MODE_PRIVATE)
+        return prefs.contains("user_token") // Example: token stored after login
+    }
+
+    private fun isModeSelected(): Boolean {
+        val prefs = getSharedPreferences("ARIA_PREFS", Context.MODE_PRIVATE)
+        return prefs.contains("user_mode") // Example: "AI", "SECURE", "BOTH"
+    }
+
+    private fun requiresSecurePermissions(): Boolean {
+        val prefs = getSharedPreferences("ARIA_PREFS", Context.MODE_PRIVATE)
+        val mode = prefs.getString("user_mode", "AI")
+        return mode == "SECURE" || mode == "BOTH"
     }
 }
