@@ -16,9 +16,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.LostModeClient">
 
-        <!-- Entry point: redirects to Login or ModeSelection -->
+        <!-- Launcher redirects based on login -->
         <activity
-            android:name=".MainActivity"
+            android:name=".LauncherActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -34,6 +34,11 @@
         <!-- Mode Selection (Secure Device / AI Chat / Both) -->
         <activity
             android:name=".ModeSelectionActivity"
+            android:exported="true" />
+
+        <!-- Secure Device Mode -->
+        <activity
+            android:name=".MainActivity"
             android:exported="true" />
 
         <!-- Device List & Control -->
