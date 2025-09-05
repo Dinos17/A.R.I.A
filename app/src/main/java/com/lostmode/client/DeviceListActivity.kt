@@ -7,10 +7,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import okhttp3.*
 import org.json.JSONArray
-import org.json.JSONObject
-import java.io.IOException
 
 /**
  * Displays all devices linked to the user's account.
@@ -35,6 +32,35 @@ class DeviceListActivity : AppCompatActivity() {
             }
             startActivity(intent)
         }
+        recyclerView.adapter = adapter
+
+        fetchDevices()
+    }
+
+    private fun fetchDevices() {
+        NetworkClient.fetchDevices { jsonArray ->
+            if (jsonArray == null) {
+                runOnUiThread {
+                    Toast.makeText(this, "Failed to fetch devices", Toast.LENGTH_SHORT).show()
+                }
+                return@fetchDevices
+            }
+
+            devices.clear()
+            for (i in 0 until jsonArray.length()) {
+                val obj = jsonArray.getJSONObject(i)
+                devices.add(Device(obj.getString("id"), obj.getString("name")))
+            }
+
+            runOnUiThread { adapter.notifyDataSetChanged() }
+        }
+    }
+}
+
+/**
+ * Simple Device model
+ */
+data class Device(val id: String, val name: String)        }
         recyclerView.adapter = adapter
 
         fetchDevices()
