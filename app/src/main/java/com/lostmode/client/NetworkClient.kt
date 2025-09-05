@@ -9,21 +9,24 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 
+/**
+ * Handles all networking for the ARIA Lost Mode Client.
+ * Uses the global OkHttpClient from AriaApp.
+ */
 object NetworkClient {
 
     private const val TAG = "NetworkClient"
 
-    private val client: OkHttpClient by lazy {
-        OkHttpClient.Builder()
-            .retryOnConnectionFailure(true)
-            .build()
-    }
+    // Use global OkHttpClient from AriaApp
+    private val client: OkHttpClient
+        get() = AriaApp.httpClient
 
     private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
     // --- Helper to get JWT token ---
     private fun getToken(): String? {
-        val prefs = AriaApp.context.getSharedPreferences("ARIA_PREFS", android.content.Context.MODE_PRIVATE)
+        val prefs = AriaApp.instance
+            .getSharedPreferences("ARIA_PREFS", android.content.Context.MODE_PRIVATE)
         return prefs.getString("user_token", null)
     }
 
@@ -117,7 +120,11 @@ object NetworkClient {
     /**
      * Send command to a specific device.
      */
-    fun sendDeviceCommand(deviceId: String, command: JSONObject, onResult: ((Boolean) -> Unit)? = null) {
+    fun sendDeviceCommand(
+        deviceId: String,
+        command: JSONObject,
+        onResult: ((Boolean) -> Unit)? = null
+    ) {
         val body = command.toString().toRequestBody(JSON_MEDIA_TYPE)
         val url = "${Config.COMMAND_ENDPOINT}/$deviceId"
         val request = buildRequest(url, body).build()
