@@ -16,7 +16,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.LostModeClient">
 
-        <!-- Main launcher activity -->
+        <!-- Entry point: redirects to Login or ModeSelection -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -25,6 +25,21 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
+        <!-- Login / Sign-up -->
+        <activity
+            android:name=".LoginActivity"
+            android:exported="true" />
+
+        <!-- Mode Selection (Secure Device / AI Chat / Both) -->
+        <activity
+            android:name=".ModeSelectionActivity"
+            android:exported="true" />
+
+        <!-- Device List & Control -->
+        <activity
+            android:name=".DeviceListActivity"
+            android:exported="true" />
 
         <!-- Device Admin Receiver for Lost Mode activation -->
         <receiver
@@ -39,12 +54,11 @@
                 android:resource="@xml/device_admin"/>
         </receiver>
 
-        <!-- Foreground Service for GPS tracking and connectivity monitoring -->
+        <!-- Foreground Service for GPS tracking -->
         <service
             android:name=".LostModeService"
             android:foregroundServiceType="location"
             android:permission="android.permission.FOREGROUND_SERVICE"
             android:exported="false"/>
-
     </application>
 </manifest>
