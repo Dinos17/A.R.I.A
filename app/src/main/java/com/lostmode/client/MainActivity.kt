@@ -13,13 +13,21 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 
+/**
+ * MainActivity
+ *
+ * Entry point after login and mode selection.
+ * Handles permission requests, Device Admin setup, and starts LostModeService.
+ */
 class MainActivity : AppCompatActivity() {
 
+    // Base permissions required for location
     private val basePermissions = arrayOf(
         Manifest.permission.ACCESS_FINE_LOCATION,
         Manifest.permission.ACCESS_COARSE_LOCATION
     )
 
+    // Extra permission for Android 14+ (foreground service location)
     private val extraPermissions = if (Build.VERSION.SDK_INT >= 34) {
         arrayOf(Manifest.permission.FOREGROUND_SERVICE_LOCATION)
     } else {
@@ -28,6 +36,7 @@ class MainActivity : AppCompatActivity() {
 
     private val allPermissions = basePermissions + extraPermissions
 
+    // Permission request launcher
     private val requestPermissionsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
             val denied = result.entries.firstOrNull { !it.value }?.key
@@ -44,21 +53,19 @@ class MainActivity : AppCompatActivity() {
 
         // 1. Check if user is logged in
         if (!isLoggedIn()) {
-            val loginIntent = Intent(this, LoginActivity::class.java)
-            startActivity(loginIntent)
+            startActivity(Intent(this, LoginActivity::class.java))
             finish()
             return
         }
 
         // 2. Navigate to Mode Selection if mode not set
         if (!isModeSelected()) {
-            val modeIntent = Intent(this, ModeSelectionActivity::class.java)
-            startActivity(modeIntent)
+            startActivity(Intent(this, ModeSelectionActivity::class.java))
             finish()
             return
         }
 
-        // 3. Check if Secure Device / Both modes are selected
+        // 3. If Secure Device / Both modes, request permissions
         if (requiresSecurePermissions()) {
             if (!hasAllPermissions()) {
                 requestPermissionsLauncher.launch(allPermissions)
@@ -66,13 +73,17 @@ class MainActivity : AppCompatActivity() {
                 proceedAfterPermissions()
             }
         } else {
-            // AI Chat only → skip permissions and start main app
+            // AI Chat only → skip permissions and go to Devices screen
             navigateToDevicesScreen()
         }
     }
 
+    /**
+     * Called after all permissions are granted.
+     * Checks Device Admin and starts LostModeService.
+     */
     private fun proceedAfterPermissions() {
-        // 4. Device Admin check
+        // Device Admin check
         val dpm = getSystemService(DevicePolicyManager::class.java)
         val compName = ComponentName(this, AriaDeviceAdminReceiver::class.java)
 
@@ -95,7 +106,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // 5. Start LostModeService
+        // Start LostModeService
         val svcIntent = Intent(this, LostModeService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             ContextCompat.startForegroundService(this, svcIntent)
@@ -106,12 +117,18 @@ class MainActivity : AppCompatActivity() {
         navigateToDevicesScreen()
     }
 
+    /**
+     * Navigate to Device List screen
+     */
     private fun navigateToDevicesScreen() {
-        val devicesIntent = Intent(this, DevicesActivity::class.java)
+        val devicesIntent = Intent(this, DeviceListActivity::class.java)
         startActivity(devicesIntent)
         finish()
     }
 
+    /**
+     * Check all required permissions are granted
+     */
     private fun hasAllPermissions(): Boolean {
         basePermissions.forEach {
             if (ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED) return false
@@ -127,16 +144,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     // --- Helpers for login/mode state ---
+
+    /**
+     * Checks if user is logged in (token exists)
+     */
     private fun isLoggedIn(): Boolean {
         val prefs = getSharedPreferences("ARIA_PREFS", Context.MODE_PRIVATE)
-        return prefs.contains("user_token") // Example: token stored after login
+        return prefs.contains("auth_token") // fixed key
     }
 
+    /**
+     * Checks if user has selected a mode
+     */
     private fun isModeSelected(): Boolean {
         val prefs = getSharedPreferences("ARIA_PREFS", Context.MODE_PRIVATE)
-        return prefs.contains("user_mode") // Example: "AI", "SECURE", "BOTH"
+        return prefs.contains("user_mode")
     }
 
+    /**
+     * Checks if selected mode requires secure permissions
+     */
     private fun requiresSecurePermissions(): Boolean {
         val prefs = getSharedPreferences("ARIA_PREFS", Context.MODE_PRIVATE)
         val mode = prefs.getString("user_mode", "AI")
