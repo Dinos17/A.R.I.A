@@ -32,9 +32,129 @@ class LostModeService : Service() {
     }
 
     private lateinit var fusedClient: FusedLocationProviderClient
-    private lateinit var dpm: DevicePolicyManager
-    private lateinit var compName: ComponentName
+    private var dpm: DevicePolicyManager? = null
+    private var compName: ComponentName? = null
     private var lostModeActive = false
+
+    override fun onCreate() {
+        super.onCreate()
+        Log.i(TAG, "Service onCreate")
+
+        startForeground(NOTIF_ID, buildNotification())
+
+        if (!requiresLostMode()) {
+            Log.i(TAG, "Lost Mode not required — service running idle.")
+            return
+        }
+
+        dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
+        compName = ComponentName(this, AriaDeviceAdminReceiver::class.java)
+        fusedClient = LocationServices.getFusedLocationProviderClient(this)
+
+        // Start location updates immediately if permission granted
+        if (hasLocationPermission()) {
+            startLocationUpdates()
+        } else {
+            Log.w(TAG, "Missing location permissions — cannot start updates.")
+        }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun buildNotification(): Notification {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val nm = getSystemService(NotificationManager::class.java)
+            if (nm.getNotificationChannel(CHANNEL_ID) == null) {
+                nm.createNotificationChannel(
+                    NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW).apply {
+                        description = "ARIA background service"
+                    }
+                )
+            }
+        }
+
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("System Update")
+            .setContentText("ARIA Lost Mode service running")
+            .setSmallIcon(android.R.drawable.ic_lock_lock)
+            .setOngoing(true)
+            .build()
+    }
+
+    private fun hasLocationPermission(): Boolean {
+        val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+        val coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+        val foreground = if (Build.VERSION.SDK_INT >= 34)
+            ContextCompat.checkSelfPermission(this, Manifest.permission.FOREGROUND_SERVICE_LOCATION)
+        else PackageManager.PERMISSION_GRANTED
+
+        return fine == PackageManager.PERMISSION_GRANTED &&
+                coarse == PackageManager.PERMISSION_GRANTED &&
+                foreground == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun startLocationUpdates() {
+        if (!hasLocationPermission()) return
+
+        val request: LocationRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            LocationRequest.Builder(INTERVAL_MS)
+                .setMinUpdateIntervalMillis(FASTEST_MS)
+                .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                .build()
+        } else {
+            LocationRequest.create().apply {
+                interval = INTERVAL_MS
+                fastestInterval = FASTEST_MS
+                priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+            }
+        }
+
+        fusedClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
+        Log.i(TAG, "Location updates started.")
+    }
+
+    private val locationCallback = object : LocationCallback() {
+        override fun onLocationResult(result: LocationResult) {
+            val loc: Location? = result.lastLocation
+            if (loc != null && lostModeActive) {
+                NetworkClient.sendLocationToServer(loc) { json ->
+                    try { handleServerCommands(json) } catch (_: Exception) {}
+                }
+            }
+        }
+    }
+
+    private fun handleServerCommands(json: JSONObject) {
+        if (!lostModeActive && json.optBoolean("lock", false)) {
+            lostModeActive = true
+            lockDevice()
+            startLocationUpdates()
+            Log.i(TAG, "Lost Mode activated by server.")
+        }
+    }
+
+    private fun lockDevice() {
+        if (dpm != null && compName != null && dpm!!.isAdminActive(compName!!)) {
+            dpm!!.lockNow()
+            Log.i(TAG, "Device locked by Lost Mode.")
+        } else {
+            Log.w(TAG, "Device admin not active — cannot lock.")
+        }
+    }
+
+    override fun onDestroy() {
+        try { fusedClient.removeLocationUpdates(locationCallback) } catch (_: Exception) {}
+        Log.i(TAG, "Service destroyed")
+        super.onDestroy()
+    }
+
+    private fun requiresLostMode(): Boolean {
+        val prefs = getSharedPreferences("ARIA_PREFS", Context.MODE_PRIVATE)
+        val mode = prefs.getString("user_mode", "AI")
+        return mode == "SECURE" || mode == "BOTH"
+    }
+}    private var lostModeActive = false
 
     override fun onCreate() {
         super.onCreate()
