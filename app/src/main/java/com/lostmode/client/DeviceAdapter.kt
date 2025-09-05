@@ -21,7 +21,7 @@ class DeviceAdapter(
         val txtName: TextView = view.findViewById(R.id.txtDeviceName)
         init {
             view.setOnClickListener {
-                val position = bindingAdapterPosition
+                val position = adapterPosition
                 if (position != RecyclerView.NO_POSITION) {
                     onClick(devices[position])
                 }
