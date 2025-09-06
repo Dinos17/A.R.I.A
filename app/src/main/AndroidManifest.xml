@@ -16,7 +16,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.LostModeClient"
-        android:usesCleartextTraffic="true">   <!-- ✅ Added this line -->
+        android:usesCleartextTraffic="true">
 
         <!-- Launcher Activity (entry point) -->
         <activity
