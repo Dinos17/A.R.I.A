@@ -1,26 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/layoutDeviceList"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp"
-    android:background="?android:attr/windowBackground">
+    android:background="@color/backgroundColor"
+    android:padding="16dp">
 
+    <!-- Title -->
     <TextView
         android:id="@+id/txtTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="My Devices"
-        android:textSize="20sp"
+        android:textSize="24sp"
         android:textStyle="bold"
-        android:paddingBottom="12dp"/>
+        android:textColor="@color/primaryColor"
+        android:paddingBottom="16dp" />
 
+    <!-- RecyclerView for devices -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerDevices"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:clipToPadding="false"
         android:scrollbars="vertical"
-        tools:listitem="@layout/item_device"/>
+        tools:listitem="@layout/item_device_card" />
+
 </LinearLayout>
