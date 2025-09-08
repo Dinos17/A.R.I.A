@@ -1,29 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Original primary colors -->
-    <color name="purple_500">#6200EE</color>
-    <color name="purple_700">#3700B3</color>
+    <!-- Primary colors -->
+    <color name="primaryColor">#6200EE</color>       <!-- purple_500 -->
+    <color name="primaryVariantColor">#3700B3</color> <!-- purple_700 -->
+    <color name="onPrimaryColor">#FFFFFF</color>
 
-    <!-- Original secondary colors -->
-    <color name="teal_200">#03DAC5</color>
-    <color name="teal_700">#018786</color>
+    <!-- Secondary/accent colors -->
+    <color name="secondaryColor">#03DAC5</color>     <!-- teal_200 -->
+    <color name="secondaryVariantColor">#018786</color> <!-- teal_700 -->
+    <color name="onSecondaryColor">#000000</color>
 
-    <!-- Original neutral colors -->
-    <color name="white">#FFFFFF</color>
-    <color name="black">#000000</color>
-
-    <!-- Original backgrounds -->
-    <color name="background_light">#FFFFFF</color>
-    <color name="background_dark">#121212</color>
-
-    <!-- Additional colors for updated UI -->
-    <color name="textColorPrimary">#000000</color>
-    <color name="textColorSecondary">#666666</color>
-    <color name="cardStrokeColor">#DDDDDD</color>
-    <color name="deviceOnline">#4CAF50</color>
-    <color name="deviceOffline">#F44336</color>
-    <color name="buttonBackground">#6200EE</color>
-    <color name="buttonTextColor">#FFFFFF</color>
+    <!-- Background & surfaces -->
     <color name="backgroundColor">#FFFFFF</color>
     <color name="surfaceColor">#F5F5F5</color>
+    <color name="cardStrokeColor">#DDDDDD</color>
+
+    <!-- Text colors -->
+    <color name="textColorPrimary">#000000</color>
+    <color name="textColorSecondary">#666666</color>
+    <color name="textColorDisabled">#AAAAAA</color>
+
+    <!-- Status indicators -->
+    <color name="deviceOnline">#4CAF50</color>
+    <color name="deviceOffline">#F44336</color>
+
+    <!-- Buttons -->
+    <color name="buttonBackground">#6200EE</color>
+    <color name="buttonTextColor">#FFFFFF</color>
 </resources>
