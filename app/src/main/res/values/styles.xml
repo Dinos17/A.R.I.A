@@ -1,30 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Primary branding colors -->
-    <color name="primaryColor">#6200EE</color>        <!-- purple_500 -->
-    <color name="primaryVariantColor">#3700B3</color> <!-- purple_700 -->
-    <color name="onPrimaryColor">#FFFFFF</color>
+    <!-- Base application theme -->
+    <style name="Theme.LostModeClient" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Primary & Secondary Colors -->
+        <item name="colorPrimary">@color/primaryColor</item>
+        <item name="colorPrimaryVariant">@color/primaryVariantColor</item>
+        <item name="colorOnPrimary">@color/onPrimaryColor</item>
 
-    <!-- Secondary/accent colors -->
-    <color name="secondaryColor">#03DAC5</color>     <!-- teal_200 -->
-    <color name="secondaryVariantColor">#018786</color> <!-- teal_700 -->
-    <color name="onSecondaryColor">#000000</color>
+        <item name="colorSecondary">@color/secondaryColor</item>
+        <item name="colorSecondaryVariant">@color/secondaryVariantColor</item>
+        <item name="colorOnSecondary">@color/onSecondaryColor</item>
 
-    <!-- Background & surfaces -->
-    <color name="backgroundColor">#FFFFFF</color>
-    <color name="surfaceColor">#F5F5F5</color>
-    <color name="cardStrokeColor">#DDDDDD</color>
+        <!-- Status bar and navigation bar -->
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <item name="android:navigationBarColor">?attr/colorPrimary</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
 
-    <!-- Text colors -->
-    <color name="textColorPrimary">#000000</color>
-    <color name="textColorSecondary">#666666</color>
-    <color name="textColorDisabled">#AAAAAA</color>
+        <!-- General UI styling -->
+        <item name="android:textColorPrimary">@color/textColorPrimary</item>
+        <item name="android:textColorSecondary">@color/textColorSecondary</item>
+        <item name="android:windowBackground">@color/backgroundColor</item>
 
-    <!-- Status indicators -->
-    <color name="deviceOnline">#4CAF50</color>  <!-- green -->
-    <color name="deviceOffline">#F44336</color> <!-- red -->
+        <!-- Material Components defaults -->
+        <item name="materialButtonStyle">@style/Widget.LostModeClient.Button</item>
+        <item name="textAppearanceButton">@style/TextAppearance.LostModeClient.Button</item>
+    </style>
 
-    <!-- Buttons -->
-    <color name="buttonBackground">#6200EE</color>
-    <color name="buttonTextColor">#FFFFFF</color>
+    <!-- Custom button style -->
+    <style name="Widget.LostModeClient.Button" parent="Widget.MaterialComponents.Button">
+        <item name="cornerRadius">16dp</item>
+        <item name="android:insetTop">8dp</item>
+        <item name="android:insetBottom">8dp</item>
+        <item name="android:paddingLeft">20dp</item>
+        <item name="android:paddingRight">20dp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:backgroundTint">@color/buttonBackground</item>
+        <item name="android:textColor">@color/buttonTextColor</item>
+    </style>
+
+    <!-- Button text appearance -->
+    <style name="TextAppearance.LostModeClient.Button" parent="TextAppearance.MaterialComponents.Button">
+        <item name="android:textSize">16sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
 </resources>
