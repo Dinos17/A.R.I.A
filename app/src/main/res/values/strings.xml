@@ -7,7 +7,7 @@
     <string name="device_admin_enable_title">Enable A.R.I.A. Device Admin</string>
     <string name="device_admin_enable_text">Required to use Lost Mode locking features.</string>
 
-    <!-- Status labels (used in activity_main.xml and code) -->
+    <!-- Status labels -->
     <string name="lost_mode_status">Lost Mode: %1$s</string>
     <string name="gps_status">GPS: %1$s</string>
     <string name="connection_status">Connection: %1$s</string>
@@ -15,6 +15,22 @@
     <!-- Button labels -->
     <string name="start_service">Start Service</string>
     <string name="stop_service">Stop Service</string>
+    <string name="login">Login</string>
+    <string name="signup">Sign Up</string>
+    <string name="logout">Logout</string>
+    <string name="secure_device_mode">Secure Device Mode</string>
+
+    <!-- Login/Signup hints -->
+    <string name="email_hint">Email</string>
+    <string name="password_hint">Password</string>
+    <string name="confirm_password_hint">Confirm Password</string>
+
+    <!-- Error messages -->
+    <string name="error_invalid_credentials">Invalid credentials</string>
+    <string name="error_network">Network error: %1$s</string>
+    <string name="error_fields_required">Please fill in all fields</string>
+    <string name="signup_success">Signup successful! Please log in.</string>
+    <string name="login_success">Login successful!</string>
 
     <!-- Default state values -->
     <string name="status_unknown">Unknown</string>
@@ -29,6 +45,8 @@
     <string name="connection_status_desc">Displays current connection status</string>
     <string name="start_service_desc">Starts the ARIA background service</string>
     <string name="stop_service_desc">Stops the ARIA background service</string>
+    <string name="login_button_desc">Logs in to your account</string>
+    <string name="signup_button_desc">Creates a new account</string>
 
     <!-- Defaults for UI initialization -->
     <string name="lost_mode_unknown">Lost Mode: Unknown</string>
