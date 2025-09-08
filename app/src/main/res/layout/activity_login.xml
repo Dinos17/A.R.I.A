@@ -1,37 +1,102 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/scrollLogin"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:padding="24dp"
-    android:background="?android:attr/windowBackground">
+    android:fillViewport="true"
+    android:background="@color/backgroundColor"
+    android:padding="24dp">
 
-    <EditText
-        android:id="@+id/inputEmail"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Email"
-        android:inputType="textEmailAddress"
-        android:importantForAutofill="yes"
-        android:padding="12dp"
-        android:layout_marginBottom="12dp"/>
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
 
-    <EditText
-        android:id="@+id/inputPassword"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Password"
-        android:inputType="textPassword"
-        android:imeOptions="actionDone"
-        android:importantForAutofill="yes"
-        android:padding="12dp"
-        android:layout_marginBottom="16dp"/>
+        <!-- App title -->
+        <TextView
+            android:id="@+id/tvAppTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ARIA Lost Mode"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:textColor="@color/primaryColor"
+            android:layout_marginBottom="32dp" />
 
-    <Button
-        android:id="@+id/btnLogin"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Login"/>
+        <!-- Email input -->
+        <EditText
+            android:id="@+id/inputEmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Email"
+            android:inputType="textEmailAddress"
+            android:importantForAutofill="yes"
+            android:padding="16dp"
+            android:background="@drawable/bg_input"
+            android:layout_marginBottom="16dp"
+            android:textColor="@color/textColorPrimary" />
 
-</LinearLayout>
+        <!-- Password input -->
+        <EditText
+            android:id="@+id/inputPassword"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Password"
+            android:inputType="textPassword"
+            android:imeOptions="actionDone"
+            android:importantForAutofill="yes"
+            android:padding="16dp"
+            android:background="@drawable/bg_input"
+            android:layout_marginBottom="16dp"
+            android:textColor="@color/textColorPrimary" />
+
+        <!-- Confirm Password (for Sign Up) -->
+        <EditText
+            android:id="@+id/inputConfirmPassword"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Confirm Password"
+            android:inputType="textPassword"
+            android:imeOptions="actionDone"
+            android:importantForAutofill="yes"
+            android:padding="16dp"
+            android:background="@drawable/bg_input"
+            android:layout_marginBottom="24dp"
+            android:textColor="@color/textColorPrimary"
+            android:visibility="gone" />
+
+        <!-- Login button -->
+        <Button
+            android:id="@+id/btnLogin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Login"
+            android:backgroundTint="@color/primaryColor"
+            android:textColor="@color/white"
+            android:padding="14dp"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/bg_button_rounded" />
+
+        <!-- Sign Up button -->
+        <Button
+            android:id="@+id/btnSignUp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sign Up"
+            android:backgroundTint="@color/secondaryColor"
+            android:textColor="@color/white"
+            android:padding="14dp"
+            android:background="@drawable/bg_button_rounded" />
+
+        <!-- Toggle between login/signup -->
+        <TextView
+            android:id="@+id/tvToggleLoginSignUp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Already have an account? Login"
+            android:textColor="@color/linkColor"
+            android:layout_marginTop="24dp" />
+
+    </LinearLayout>
+</ScrollView>
