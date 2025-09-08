@@ -16,6 +16,8 @@ import java.io.IOException
 object NetworkClient {
 
     private const val TAG = "NetworkClient"
+    private const val PREFS_NAME = "aria_prefs"
+    private const val PREFS_TOKEN_KEY = "auth_token"
 
     // Public client so DeviceListActivity can access it
     val client: OkHttpClient by lazy {
@@ -29,8 +31,14 @@ object NetworkClient {
     // --- Helper to get JWT token ---
     private fun getToken(): String? {
         val prefs = AriaApp.instance
-            .getSharedPreferences("ARIA_PREFS", android.content.Context.MODE_PRIVATE)
-        return prefs.getString("user_token", null)
+            .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+        return prefs.getString(PREFS_TOKEN_KEY, null)
+    }
+
+    private fun saveToken(token: String) {
+        val prefs = AriaApp.instance
+            .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+        prefs.edit().putString(PREFS_TOKEN_KEY, token).apply()
     }
 
     private fun buildRequest(url: String, body: RequestBody? = null): Request.Builder {
@@ -41,9 +49,57 @@ object NetworkClient {
         return builder
     }
 
-    /**
-     * Send location to server asynchronously.
-     */
+    // --- AUTH (Login & Signup) ---
+    fun login(email: String, password: String, onResult: (Boolean, String?) -> Unit) {
+        sendAuthRequest(Config.LOGIN_ENDPOINT, email, password, onResult)
+    }
+
+    fun signup(email: String, password: String, onResult: (Boolean, String?) -> Unit) {
+        sendAuthRequest(Config.SIGNUP_ENDPOINT, email, password, onResult)
+    }
+
+    private fun sendAuthRequest(endpoint: String, email: String, password: String, onResult: (Boolean, String?) -> Unit) {
+        val payload = JSONObject().apply {
+            put("email", email)
+            put("password", password)
+        }
+
+        val body = payload.toString().toRequestBody(JSON_MEDIA_TYPE)
+        val request = Request.Builder().url(endpoint).post(body).build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Auth request failed: ${e.message}", e)
+                onResult(false, "Network error: ${e.message}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    val responseBody = it.body?.string()
+                    if (it.isSuccessful && !responseBody.isNullOrEmpty()) {
+                        try {
+                            val json = JSONObject(responseBody)
+                            val token = json.optString("token", "")
+                            if (token.isNotEmpty()) {
+                                saveToken(token)
+                                onResult(true, null)
+                            } else {
+                                onResult(false, json.optString("message", "Invalid response"))
+                            }
+                        } catch (ex: Exception) {
+                            Log.e(TAG, "Failed to parse auth response: ${ex.message}", ex)
+                            onResult(false, "Response parsing error")
+                        }
+                    } else {
+                        val errorMsg = JSONObject(responseBody ?: "{}").optString("message", "Auth failed")
+                        onResult(false, errorMsg)
+                    }
+                }
+            }
+        })
+    }
+
+    // --- LOCATION ---
     fun sendLocationToServer(location: Location, onCommands: ((JSONObject) -> Unit)? = null) {
         val mapLink = "https://maps.google.com/?q=${location.latitude},${location.longitude}"
         val payload = JSONObject().apply {
@@ -85,9 +141,7 @@ object NetworkClient {
         })
     }
 
-    /**
-     * Fetch devices list linked to this account.
-     */
+    // --- DEVICES LIST ---
     fun fetchDevices(onResult: (JSONArray?) -> Unit) {
         val request = buildRequest(Config.DEVICES_ENDPOINT).build()
         client.newCall(request).enqueue(object : Callback {
@@ -120,14 +174,8 @@ object NetworkClient {
         })
     }
 
-    /**
-     * Send command to a specific device.
-     */
-    fun sendDeviceCommand(
-        deviceId: String,
-        command: JSONObject,
-        onResult: ((Boolean) -> Unit)? = null
-    ) {
+    // --- COMMANDS ---
+    fun sendDeviceCommand(deviceId: String, command: JSONObject, onResult: ((Boolean) -> Unit)? = null) {
         val body = command.toString().toRequestBody(JSON_MEDIA_TYPE)
         val url = "${Config.COMMAND_ENDPOINT}/$deviceId"
         val request = buildRequest(url, body).build()
