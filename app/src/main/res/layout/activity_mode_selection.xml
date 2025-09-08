@@ -1,25 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layoutModeSelection"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="center"
-    android:padding="24dp"
-    android:background="?android:attr/windowBackground">
+    android:gravity="center_horizontal"
+    android:background="@color/backgroundColor"
+    android:padding="24dp">
 
+    <!-- Title -->
+    <TextView
+        android:id="@+id/tvModeTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Select Mode"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="@color/primaryColor"
+        android:layout_marginBottom="32dp" />
+
+    <!-- Secure Device Mode Button -->
     <Button
         android:id="@+id/btnSecureDevice"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Secure Device Mode"
+        android:padding="16dp"
+        android:background="@drawable/bg_button_rounded"
+        android:backgroundTint="@color/primaryColor"
+        android:textColor="@color/white"
         android:layout_marginBottom="16dp"
-        android:contentDescription="Select Secure Device Mode"/>
+        android:contentDescription="Select Secure Device Mode" />
 
+    <!-- Logout Button -->
     <Button
         android:id="@+id/btnLogout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Logout"
-        android:contentDescription="Logout from ARIA"/>
+        android:padding="16dp"
+        android:background="@drawable/bg_button_rounded"
+        android:backgroundTint="@color/secondaryColor"
+        android:textColor="@color/white"
+        android:contentDescription="Logout from ARIA" />
 
 </LinearLayout>
