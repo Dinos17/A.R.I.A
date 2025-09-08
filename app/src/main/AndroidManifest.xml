@@ -24,15 +24,13 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
 
-        // Bind views
+        // Bind UI elements
         emailInput = findViewById(R.id.inputEmail)
         passwordInput = findViewById(R.id.inputPassword)
         loginButton = findViewById(R.id.btnLogin)
+        signupButton = findViewById(R.id.btnSignup) // Make sure layout has this button
 
-        // Optional: add signup button if not already in layout
-        signupButton = findViewById(R.id.btnSignup) // make sure activity_login.xml has this button
-
-        // Login click
+        // Login click listener
         loginButton.setOnClickListener {
             val email = emailInput.text.toString().trim()
             val password = passwordInput.text.toString().trim()
@@ -43,7 +41,7 @@ class LoginActivity : AppCompatActivity() {
             }
         }
 
-        // Signup click
+        // Signup click listener
         signupButton.setOnClickListener {
             val email = emailInput.text.toString().trim()
             val password = passwordInput.text.toString().trim()
@@ -91,7 +89,7 @@ class LoginActivity : AppCompatActivity() {
                     val token = json?.optString("token")
 
                     if (!token.isNullOrEmpty()) {
-                        // Save token
+                        // Save token locally
                         getSharedPreferences("ARIA_PREFS", MODE_PRIVATE)
                             .edit()
                             .putString("auth_token", token)
@@ -123,7 +121,7 @@ class LoginActivity : AppCompatActivity() {
 
         val body = payload.toString().toRequestBody("application/json".toMediaType())
         val request = Request.Builder()
-            .url(Config.SIGNUP_ENDPOINT) // Make sure Config.kt has SIGNUP_ENDPOINT
+            .url(Config.SIGNUP_ENDPOINT) // Ensure this exists in Config.kt
             .post(body)
             .build()
 
@@ -148,7 +146,7 @@ class LoginActivity : AppCompatActivity() {
                     val token = json?.optString("token")
 
                     if (!token.isNullOrEmpty()) {
-                        // Save token
+                        // Save token locally
                         getSharedPreferences("ARIA_PREFS", MODE_PRIVATE)
                             .edit()
                             .putString("auth_token", token)
