@@ -18,6 +18,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var emailInput: EditText
     private lateinit var passwordInput: EditText
     private lateinit var loginButton: Button
+    private lateinit var signupButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,7 +27,9 @@ class LoginActivity : AppCompatActivity() {
         emailInput = findViewById(R.id.inputEmail)
         passwordInput = findViewById(R.id.inputPassword)
         loginButton = findViewById(R.id.btnLogin)
+        signupButton = findViewById(R.id.btnSignup)
 
+        // Handle Login
         loginButton.setOnClickListener {
             val email = emailInput.text.toString().trim()
             val password = passwordInput.text.toString().trim()
@@ -37,9 +40,29 @@ class LoginActivity : AppCompatActivity() {
                 performLogin(email, password)
             }
         }
+
+        // Handle Signup
+        signupButton.setOnClickListener {
+            val email = emailInput.text.toString().trim()
+            val password = passwordInput.text.toString().trim()
+
+            if (email.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Enter email and password", Toast.LENGTH_SHORT).show()
+            } else {
+                performSignup(email, password)
+            }
+        }
     }
 
     private fun performLogin(email: String, password: String) {
+        sendAuthRequest(Config.LOGIN_ENDPOINT, email, password, "Login")
+    }
+
+    private fun performSignup(email: String, password: String) {
+        sendAuthRequest(Config.SIGNUP_ENDPOINT, email, password, "Signup")
+    }
+
+    private fun sendAuthRequest(endpoint: String, email: String, password: String, action: String) {
         val payload = JSONObject().apply {
             put("email", email)
             put("password", password)
@@ -47,7 +70,7 @@ class LoginActivity : AppCompatActivity() {
 
         val body = payload.toString().toRequestBody("application/json".toMediaType())
         val request = Request.Builder()
-            .url(Config.LOGIN_ENDPOINT)
+            .url(endpoint)
             .post(body)
             .build()
 
@@ -56,37 +79,32 @@ class LoginActivity : AppCompatActivity() {
                 runOnUiThread {
                     Toast.makeText(this@LoginActivity, "Network error: ${e.message}", Toast.LENGTH_LONG).show()
                 }
-                Log.e("LoginActivity", "Login failed: ${e.message}", e)
+                Log.e("AuthActivity", "$action failed: ${e.message}", e)
             }
 
             override fun onResponse(call: Call, response: Response) {
                 response.use {
-                    if (!it.isSuccessful) {
-                        runOnUiThread {
-                            Toast.makeText(this@LoginActivity, "Invalid credentials", Toast.LENGTH_SHORT).show()
-                        }
-                        return
-                    }
-
                     val responseBody = it.body?.string()
                     val json = responseBody?.let { str -> JSONObject(str) }
 
-                    val token = json?.optString("token")
-                    if (!token.isNullOrEmpty()) {
-                        // Save token locally (SharedPreferences for now)
+                    if (it.isSuccessful && json?.has("token") == true) {
+                        val token = json.optString("token")
+
+                        // Save token locally
                         getSharedPreferences("aria_prefs", MODE_PRIVATE)
                             .edit()
                             .putString("auth_token", token)
                             .apply()
 
                         runOnUiThread {
-                            Toast.makeText(this@LoginActivity, "Login successful!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@LoginActivity, "$action successful!", Toast.LENGTH_SHORT).show()
                             startActivity(Intent(this@LoginActivity, ModeSelectionActivity::class.java))
                             finish()
                         }
                     } else {
                         runOnUiThread {
-                            Toast.makeText(this@LoginActivity, "Login failed", Toast.LENGTH_SHORT).show()
+                            val message = json?.optString("message", "$action failed")
+                            Toast.makeText(this@LoginActivity, message, Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
