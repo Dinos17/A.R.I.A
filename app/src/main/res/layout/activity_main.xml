@@ -1,24 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layoutMain"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/windowBackground"
-    android:gravity="center">
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@color/backgroundColor"
+    android:padding="24dp">
 
+    <!-- App Logo -->
+    <ImageView
+        android:id="@+id/imgAppLogo"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:src="@mipmap/ic_launcher_round"
+        android:contentDescription="ARIA App Logo"
+        android:layout_marginBottom="32dp" />
+
+    <!-- Progress Indicator -->
     <ProgressBar
         android:id="@+id/progressBar"
-        style="?android:attr/progressBarStyleLarge"
+        style="@android:style/Widget.DeviceDefault.Light.ProgressBar.Large"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:contentDescription="Loading spinner"/>
+        android:indeterminate="true"
+        android:layout_marginBottom="24dp"
+        android:indeterminateTint="@color/primaryColor"
+        android:contentDescription="Loading spinner" />
 
+    <!-- Loading Text -->
     <TextView
         android:id="@+id/loadingText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center|bottom"
-        android:layout_marginBottom="50dp"
-        android:text="Loading ARIA..."
-        android:textSize="16sp"/>
+        android:text="Setting up Secure Mode..."
+        android:textSize="18sp"
+        android:textColor="@color/textColorPrimary"
+        android:textStyle="bold"
+        android:layout_marginTop="12dp"
+        android:gravity="center" />
 
-</FrameLayout>
+</LinearLayout>
