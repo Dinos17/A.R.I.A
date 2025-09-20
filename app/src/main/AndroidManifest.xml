@@ -1,169 +1,60 @@
-package com.lostmode.client
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.lostmode.client">
 
-import android.content.Intent
-import android.os.Bundle
-import android.util.Log
-import android.widget.Button
-import android.widget.EditText
-import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import okhttp3.*
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONObject
-import java.io.IOException
+    <!-- Permissions -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
-class LoginActivity : AppCompatActivity() {
+    <!-- Optional feature declarations -->
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
-    private lateinit var emailInput: EditText
-    private lateinit var passwordInput: EditText
-    private lateinit var loginButton: Button
-    private lateinit var signupButton: Button
+    <application
+        android:name=".AriaApp"
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:supportsRtl="true">
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_login)
+        <!-- Device admin receiver -->
+        <receiver
+            android:name=".AriaDeviceAdminReceiver"
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:exported="true">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
 
-        // Bind UI elements
-        emailInput = findViewById(R.id.inputEmail)
-        passwordInput = findViewById(R.id.inputPassword)
-        loginButton = findViewById(R.id.btnLogin)
-        signupButton = findViewById(R.id.btnSignup) // Make sure layout has this button
+        <!-- Foreground service used for Lost Mode (location updates, alarms, etc.) -->
+        <service
+            android:name=".LostModeService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
 
-        // Login click listener
-        loginButton.setOnClickListener {
-            val email = emailInput.text.toString().trim()
-            val password = passwordInput.text.toString().trim()
-            if (email.isEmpty() || password.isEmpty()) {
-                Toast.makeText(this, "Enter email and password", Toast.LENGTH_SHORT).show()
-            } else {
-                performLogin(email, password)
-            }
-        }
+        <!-- Activities -->
+        <activity
+            android:name=".LauncherActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
-        // Signup click listener
-        signupButton.setOnClickListener {
-            val email = emailInput.text.toString().trim()
-            val password = passwordInput.text.toString().trim()
-            if (email.isEmpty() || password.isEmpty()) {
-                Toast.makeText(this, "Enter email and password", Toast.LENGTH_SHORT).show()
-            } else {
-                performSignup(email, password)
-            }
-        }
-    }
+        <activity android:name=".LoginActivity" android:exported="false" />
+        <activity android:name=".ModeSelectionActivity" android:exported="false" />
+        <activity android:name=".MainActivity" android:exported="false" />
+        <activity android:name=".DeviceListActivity" android:exported="false" />
 
-    /**
-     * Perform login request
-     */
-    private fun performLogin(email: String, password: String) {
-        val payload = JSONObject().apply {
-            put("email", email)
-            put("password", password)
-        }
+    </application>
 
-        val body = payload.toString().toRequestBody("application/json".toMediaType())
-        val request = Request.Builder()
-            .url(Config.LOGIN_ENDPOINT)
-            .post(body)
-            .build()
-
-        OkHttpClient().newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                runOnUiThread {
-                    Toast.makeText(this@LoginActivity, "Network error: ${e.message}", Toast.LENGTH_LONG).show()
-                }
-                Log.e("LoginActivity", "Login failed: ${e.message}", e)
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    if (!it.isSuccessful) {
-                        runOnUiThread {
-                            Toast.makeText(this@LoginActivity, "Invalid credentials", Toast.LENGTH_SHORT).show()
-                        }
-                        return
-                    }
-
-                    val json = it.body?.string()?.let { str -> JSONObject(str) }
-                    val token = json?.optString("token")
-
-                    if (!token.isNullOrEmpty()) {
-                        // Save token locally
-                        getSharedPreferences("ARIA_PREFS", MODE_PRIVATE)
-                            .edit()
-                            .putString("auth_token", token)
-                            .apply()
-
-                        runOnUiThread {
-                            Toast.makeText(this@LoginActivity, "Login successful!", Toast.LENGTH_SHORT).show()
-                            startActivity(Intent(this@LoginActivity, ModeSelectionActivity::class.java))
-                            finish()
-                        }
-                    } else {
-                        runOnUiThread {
-                            Toast.makeText(this@LoginActivity, "Login failed", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-            }
-        })
-    }
-
-    /**
-     * Perform signup request
-     */
-    private fun performSignup(email: String, password: String) {
-        val payload = JSONObject().apply {
-            put("email", email)
-            put("password", password)
-        }
-
-        val body = payload.toString().toRequestBody("application/json".toMediaType())
-        val request = Request.Builder()
-            .url(Config.SIGNUP_ENDPOINT) // Ensure this exists in Config.kt
-            .post(body)
-            .build()
-
-        OkHttpClient().newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                runOnUiThread {
-                    Toast.makeText(this@LoginActivity, "Network error: ${e.message}", Toast.LENGTH_LONG).show()
-                }
-                Log.e("LoginActivity", "Signup failed: ${e.message}", e)
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    if (!it.isSuccessful) {
-                        runOnUiThread {
-                            Toast.makeText(this@LoginActivity, "Signup failed: ${it.code}", Toast.LENGTH_SHORT).show()
-                        }
-                        return
-                    }
-
-                    val json = it.body?.string()?.let { str -> JSONObject(str) }
-                    val token = json?.optString("token")
-
-                    if (!token.isNullOrEmpty()) {
-                        // Save token locally
-                        getSharedPreferences("ARIA_PREFS", MODE_PRIVATE)
-                            .edit()
-                            .putString("auth_token", token)
-                            .apply()
-
-                        runOnUiThread {
-                            Toast.makeText(this@LoginActivity, "Signup successful!", Toast.LENGTH_SHORT).show()
-                            startActivity(Intent(this@LoginActivity, ModeSelectionActivity::class.java))
-                            finish()
-                        }
-                    } else {
-                        runOnUiThread {
-                            Toast.makeText(this@LoginActivity, "Signup failed", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-            }
-        })
-    }
-}
+</manifest>
