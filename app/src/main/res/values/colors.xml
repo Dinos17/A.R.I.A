@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Primary colors -->
-    <color name="primaryColor">#6200EE</color>       <!-- purple_500 -->
-    <color name="primaryVariantColor">#3700B3</color> <!-- purple_700 -->
+    <color name="primaryColor">#6200EE</color>        <!-- alias for purple_500 -->
+    <color name="primaryVariantColor">#3700B3</color> <!-- alias for purple_700 -->
     <color name="onPrimaryColor">#FFFFFF</color>
 
+    <!-- Legacy aliases (fix missing references) -->
+    <color name="purple_500">#6200EE</color>
+    <color name="purple_700">#3700B3</color>
+    <color name="white">#FFFFFF</color>
+    <color name="linkColor">#1E88E5</color> <!-- pick a nice blue link color -->
+
     <!-- Secondary/accent colors -->
-    <color name="secondaryColor">#03DAC5</color>     <!-- teal_200 -->
+    <color name="secondaryColor">#03DAC5</color>       <!-- teal_200 -->
     <color name="secondaryVariantColor">#018786</color> <!-- teal_700 -->
     <color name="onSecondaryColor">#000000</color>
 
