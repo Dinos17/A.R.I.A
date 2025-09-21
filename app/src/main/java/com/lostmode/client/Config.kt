@@ -28,9 +28,13 @@ object Config {
     val DEVICES_ENDPOINT: String
         get() = "$SERVER_BASE/api/devices"
 
-    // Endpoint for login/sign-up
+    // Endpoint for login
     val LOGIN_ENDPOINT: String
         get() = "$SERVER_BASE/api/login"
+
+    // ✅ Add this for signup
+    val SIGNUP_ENDPOINT: String
+        get() = "$SERVER_BASE/api/signup"
 
     // Optional network parameters
     const val NETWORK_TIMEOUT_MS: Long = 15_000L
