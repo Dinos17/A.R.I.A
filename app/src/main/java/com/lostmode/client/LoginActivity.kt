@@ -24,10 +24,11 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
 
+        // Bind UI elements (match IDs in activity_login.xml)
         emailInput = findViewById(R.id.inputEmail)
         passwordInput = findViewById(R.id.inputPassword)
         loginButton = findViewById(R.id.btnLogin)
-        signupButton = findViewById(R.id.btnSignup)
+        signupButton = findViewById(R.id.btnSignUp) // ✅ Fixed ID to match XML
 
         // Handle Login
         loginButton.setOnClickListener {
@@ -59,7 +60,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun performSignup(email: String, password: String) {
-        sendAuthRequest(Config.SIGNUP_ENDPOINT, email, password, "Signup")
+        sendAuthRequest(Config.SIGNUP_ENDPOINT, email, password, "Signup") // ✅ Now points to Config.SIGNUP_ENDPOINT
     }
 
     private fun sendAuthRequest(endpoint: String, email: String, password: String, action: String) {
