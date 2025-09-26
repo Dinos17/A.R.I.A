@@ -18,7 +18,7 @@ android {
         multiDexEnabled true
 
         // ✅ Inject ARIA_API_KEY from local.properties
-        buildConfigField "String", "ARIA_API_KEY", "\"${project.properties['ARIA_API_KEY'] ?: ""}\""
+        buildConfigField "String", "ARIA_API_KEY", "\"${project.properties['ARIA_API_KEY'] ?: "MISSING_KEY"}\""
     }
 
     buildTypes {
@@ -39,6 +39,11 @@ android {
     kotlinOptions {
         jvmTarget = "17"
         freeCompilerArgs += ["-Xjvm-default=all"]
+    }
+
+    // ✅ Enable BuildConfig generation explicitly
+    buildFeatures {
+        buildConfig true
     }
 
     packagingOptions {
