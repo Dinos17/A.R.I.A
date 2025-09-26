@@ -24,11 +24,20 @@ class AriaApp : Application() {
                 .retryOnConnectionFailure(true)
                 .build()
         }
+
+        // ARIA API Key
+        val apiKey: String by lazy {
+            val key = BuildConfig.ARIA_API_KEY
+            if (key.isBlank()) {
+                throw IllegalStateException("Missing required configuration value: ARIA_API_KEY")
+            }
+            key
+        }
     }
 
     override fun onCreate() {
         super.onCreate()
         instance = this
-        Log.i("AriaApp", "Application started. Global resources initialized.")
+        Log.i("AriaApp", "Application started. Global resources initialized. API_KEY=${apiKey.take(4)}***")
     }
 }
