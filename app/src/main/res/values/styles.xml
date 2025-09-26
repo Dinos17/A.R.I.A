@@ -1,18 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base application theme -->
-    <style name="Theme.LostModeClient" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <!-- Base application theme (AppCompat compatible) -->
+    <style name="Theme.LostModeClient" parent="Theme.AppCompat.DayNight.NoActionBar">
         <!-- Primary & Secondary Colors -->
         <item name="colorPrimary">@color/primaryColor</item>
-        <item name="colorPrimaryVariant">@color/primaryVariantColor</item>
-        <item name="colorOnPrimary">@color/onPrimaryColor</item>
-
-        <item name="colorSecondary">@color/secondaryColor</item>
-        <item name="colorSecondaryVariant">@color/secondaryVariantColor</item>
-        <item name="colorOnSecondary">@color/onSecondaryColor</item>
+        <item name="colorPrimaryDark">@color/primaryVariantColor</item>
+        <item name="colorAccent">@color/secondaryColor</item>
 
         <!-- Status bar and navigation bar -->
-        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <item name="android:statusBarColor">?attr/colorPrimaryDark</item>
         <item name="android:navigationBarColor">?attr/colorPrimary</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
@@ -22,13 +18,13 @@
         <item name="android:textColorSecondary">@color/textColorSecondary</item>
         <item name="android:windowBackground">@color/backgroundColor</item>
 
-        <!-- Material Components defaults -->
+        <!-- Material Components defaults (works with AppCompat parent) -->
         <item name="materialButtonStyle">@style/Widget.LostModeClient.Button</item>
         <item name="textAppearanceButton">@style/TextAppearance.LostModeClient.Button</item>
     </style>
 
     <!-- Custom button style -->
-    <style name="Widget.LostModeClient.Button" parent="Widget.MaterialComponents.Button">
+    <style name="Widget.LostModeClient.Button" parent="Widget.AppCompat.Button">
         <item name="cornerRadius">16dp</item>
         <item name="android:insetTop">8dp</item>
         <item name="android:insetBottom">8dp</item>
@@ -40,7 +36,7 @@
     </style>
 
     <!-- Button text appearance -->
-    <style name="TextAppearance.LostModeClient.Button" parent="TextAppearance.MaterialComponents.Button">
+    <style name="TextAppearance.LostModeClient.Button" parent="TextAppearance.AppCompat.Button">
         <item name="android:textSize">16sp</item>
         <item name="android:fontFamily">sans-serif-medium</item>
     </style>
