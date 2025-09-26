@@ -16,6 +16,9 @@ android {
 
         // Optional: for future multidex support
         multiDexEnabled true
+
+        // ✅ Inject ARIA_API_KEY from local.properties
+        buildConfigField "String", "ARIA_API_KEY", "\"${project.properties['ARIA_API_KEY'] ?: ""}\""
     }
 
     buildTypes {
