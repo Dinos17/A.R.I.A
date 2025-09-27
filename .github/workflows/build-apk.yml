@@ -21,9 +21,9 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # 3. Set up Android SDK with explicit API level and build tools
+      # 3. Set up Android SDK with explicit API level and build tools (v1 action)
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
+        uses: android-actions/setup-android@v1
         with:
           api-level: 34
           build-tools: "34.0.0"
