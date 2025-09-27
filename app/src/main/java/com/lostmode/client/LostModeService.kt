@@ -20,12 +20,22 @@ import androidx.core.content.ContextCompat
 import com.google.android.gms.location.*
 import org.json.JSONObject
 
+/**
+ * LostModeService
+ *
+ * Handles ARIA's "Lost Mode" functionality:
+ * - Locks device when commanded by server
+ * - Sends location updates periodically
+ * - Runs safely in foreground
+ *
+ * Updated to prevent immediate app exit and handle missing modes or permissions gracefully.
+ */
 class LostModeService : Service() {
 
     companion object {
         private const val TAG = "LostModeService"
         private const val CHANNEL_ID = "lost_mode_channel"
-        private const val CHANNEL_NAME = "System Services"
+        private const val CHANNEL_NAME = "ARIA System Services"
         private const val NOTIF_ID = 101
         private const val INTERVAL_MS = 10_000L
         private const val FASTEST_MS = 10_000L
@@ -40,25 +50,32 @@ class LostModeService : Service() {
         super.onCreate()
         Log.i(TAG, "Service onCreate")
 
+        // Always run foreground service to prevent Android killing it
         startForeground(NOTIF_ID, buildNotification())
 
+        fusedClient = LocationServices.getFusedLocationProviderClient(this)
+        dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
+        compName = ComponentName(this, AriaDeviceAdminReceiver::class.java)
+
+        // Check if Lost Mode is required
         if (!requiresLostMode()) {
             Log.i(TAG, "Lost Mode not required — service running idle.")
             return
         }
 
-        dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
-        compName = ComponentName(this, AriaDeviceAdminReceiver::class.java)
-        fusedClient = LocationServices.getFusedLocationProviderClient(this)
-
+        // Start location updates if permissions exist
         if (hasLocationPermission()) {
             startLocationUpdates()
         } else {
-            Log.w(TAG, "Missing location permissions — cannot start updates.")
+            Log.w(TAG, "Missing location permissions — updates will start after permission granted.")
         }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.i(TAG, "Service onStartCommand")
+        return START_STICKY
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun buildNotification(): Notification {
@@ -81,6 +98,9 @@ class LostModeService : Service() {
             .build()
     }
 
+    /**
+     * Checks whether the app has all required location permissions.
+     */
     private fun hasLocationPermission(): Boolean {
         val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
         val coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
@@ -93,9 +113,13 @@ class LostModeService : Service() {
                 foreground == PackageManager.PERMISSION_GRANTED
     }
 
+    /**
+     * Starts periodic location updates.
+     * Won't crash if permissions are missing — safe fallback.
+     */
     private fun startLocationUpdates() {
         if (!hasLocationPermission()) {
-            Log.w(TAG, "Location permission not granted — skipping updates.")
+            Log.w(TAG, "Location permission not granted — cannot start updates.")
             return
         }
 
@@ -113,7 +137,7 @@ class LostModeService : Service() {
         }
 
         fusedClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
-        Log.i(TAG, "Location updates requested.")
+        Log.i(TAG, "Location updates started.")
     }
 
     private val locationCallback = object : LocationCallback() {
@@ -121,23 +145,29 @@ class LostModeService : Service() {
             val loc: Location? = result.lastLocation
             if (loc != null && lostModeActive) {
                 val mapLink = "https://maps.google.com/?q=${loc.latitude},${loc.longitude}"
-                Log.d(TAG, "Lost Mode Location: ${loc.latitude}, ${loc.longitude}, link: $mapLink")
+                Log.d(TAG, "Lost Mode Location: ${loc.latitude},${loc.longitude} | $mapLink")
                 NetworkClient.sendLocationToServer(loc) { json ->
-                    try { handleServerCommands(json) } catch (_: Exception) {}
+                    try { handleServerCommands(json) } catch (_: Exception) { }
                 }
             }
         }
     }
 
+    /**
+     * Handles server commands received via JSON.
+     */
     private fun handleServerCommands(json: JSONObject) {
         if (!lostModeActive && json.optBoolean("lock", false)) {
             lostModeActive = true
+            Log.i(TAG, "Lock command received from server.")
             lockDevice()
-            startLocationUpdates()
-            Log.i(TAG, "Lost Mode activated.")
+            if (hasLocationPermission()) startLocationUpdates()
         }
     }
 
+    /**
+     * Locks device if Device Admin is active.
+     */
     private fun lockDevice() {
         if (dpm != null && compName != null && dpm!!.isAdminActive(compName!!)) {
             dpm!!.lockNow()
@@ -153,9 +183,15 @@ class LostModeService : Service() {
         super.onDestroy()
     }
 
+    /**
+     * Returns true if user selected a mode that requires Lost Mode.
+     * Safe fallback: if no mode is set, returns false without crashing.
+     */
     private fun requiresLostMode(): Boolean {
         val prefs = getSharedPreferences("ARIA_PREFS", Context.MODE_PRIVATE)
-        val mode = prefs.getString("user_mode", "AI")
-        return mode == "SECURE" || mode == "BOTH"
+        val mode = prefs.getString("user_mode", "AI") // default = AI
+        val required = mode == "SECURE" || mode == "BOTH"
+        Log.i(TAG, "Mode check: user_mode=$mode | requiresLostMode=$required")
+        return required
     }
 }
