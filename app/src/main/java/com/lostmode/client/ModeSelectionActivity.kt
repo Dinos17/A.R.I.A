@@ -3,6 +3,7 @@ package com.lostmode.client
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
 /**
@@ -24,30 +25,36 @@ class ModeSelectionActivity : AppCompatActivity() {
         btnSecureDevice = findViewById(R.id.btnSecureDevice)
         btnLogout = findViewById(R.id.btnLogout)
 
-        // Secure Device Mode selection
-        btnSecureDevice.setOnClickListener {
-            // Save selected mode in SharedPreferences
+        btnSecureDevice.setOnClickListener { selectSecureMode() }
+        btnLogout.setOnClickListener { logoutUser() }
+    }
+
+    private fun selectSecureMode() {
+        try {
             getSharedPreferences("ARIA_PREFS", MODE_PRIVATE)
                 .edit()
                 .putString("user_mode", "SECURE")
                 .apply()
 
-            // Navigate to MainActivity to proceed with permissions & LostMode setup
-            val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
+            startActivity(Intent(this, MainActivity::class.java))
             finish()
+        } catch (ex: Exception) {
+            Toast.makeText(this, "Failed to select mode: ${ex.message}", Toast.LENGTH_LONG).show()
         }
+    }
 
-        // Logout clears auth token and returns to LoginActivity
-        btnLogout.setOnClickListener {
+    private fun logoutUser() {
+        try {
             getSharedPreferences("ARIA_PREFS", MODE_PRIVATE)
                 .edit()
                 .remove("auth_token")
+                .remove("user_mode")
                 .apply()
 
-            val intent = Intent(this, LoginActivity::class.java)
-            startActivity(intent)
+            startActivity(Intent(this, LoginActivity::class.java))
             finish()
+        } catch (ex: Exception) {
+            Toast.makeText(this, "Failed to logout: ${ex.message}", Toast.LENGTH_LONG).show()
         }
     }
 }
