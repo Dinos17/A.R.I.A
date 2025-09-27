@@ -6,8 +6,8 @@ import android.content.Intent
 import android.util.Log
 
 /**
- * DeviceAdminReceiver for ARIA.
- * Ensures Lost Mode can lock device.
+ * DeviceAdminReceiver for ARIA Lost Mode.
+ * Handles device admin events and logs them for debugging.
  */
 class AriaDeviceAdminReceiver : DeviceAdminReceiver() {
 
@@ -17,26 +17,31 @@ class AriaDeviceAdminReceiver : DeviceAdminReceiver() {
 
     override fun onEnabled(context: Context, intent: Intent) {
         super.onEnabled(context, intent)
-        Log.i(TAG, "Device admin enabled")
+        Log.i(TAG, "Device admin enabled. Lost Mode can now lock the device.")
     }
 
     override fun onDisabled(context: Context, intent: Intent) {
         super.onDisabled(context, intent)
-        Log.i(TAG, "Device admin disabled")
+        Log.i(TAG, "Device admin disabled. Lost Mode functionality limited.")
     }
 
     override fun onPasswordChanged(context: Context, intent: Intent) {
         super.onPasswordChanged(context, intent)
-        Log.i(TAG, "Device password changed")
+        Log.i(TAG, "Device password changed successfully.")
     }
 
     override fun onPasswordFailed(context: Context, intent: Intent) {
         super.onPasswordFailed(context, intent)
-        Log.w(TAG, "Device password attempt failed")
+        Log.w(TAG, "Device password attempt failed. Possible unauthorized access.")
     }
 
     override fun onPasswordSucceeded(context: Context, intent: Intent) {
         super.onPasswordSucceeded(context, intent)
-        Log.i(TAG, "Device password attempt succeeded")
+        Log.i(TAG, "Device password attempt succeeded.")
+    }
+
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        Log.d(TAG, "DeviceAdminReceiver received intent: ${intent.action}")
     }
 }
