@@ -2,6 +2,7 @@ package com.lostmode.client
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 
 /**
@@ -14,15 +15,22 @@ class LauncherActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val prefs = getSharedPreferences("aria_prefs", MODE_PRIVATE)
-        val token = prefs.getString("auth_token", null)
+        try {
+            val prefs = getSharedPreferences("ARIA_PREFS", MODE_PRIVATE)
+            val token = prefs.getString("auth_token", null)
 
-        if (token.isNullOrEmpty()) {
-            // No token → Go to login
+            if (token.isNullOrEmpty()) {
+                Log.i("LauncherActivity", "No auth token found → navigating to LoginActivity")
+                startActivity(Intent(this, LoginActivity::class.java))
+            } else {
+                Log.i("LauncherActivity", "Auth token found → navigating to ModeSelectionActivity")
+                startActivity(Intent(this, ModeSelectionActivity::class.java))
+            }
+
+        } catch (ex: Exception) {
+            Log.e("LauncherActivity", "Error checking token: ${ex.message}", ex)
+            // Fallback: always go to login
             startActivity(Intent(this, LoginActivity::class.java))
-        } else {
-            // Token exists → Go to mode selection
-            startActivity(Intent(this, ModeSelectionActivity::class.java))
         }
 
         finish() // prevent user from returning here
