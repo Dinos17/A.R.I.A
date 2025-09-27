@@ -7,8 +7,8 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Global Application class for ARIA Client.
- * Initializes app-wide resources such as OkHttp client, context, and required configuration.
- * Ensures ARIA_API_KEY is present before continuing.
+ * Initializes app-wide resources such as OkHttp client and configuration.
+ * Does not crash if ARIA_API_KEY is missing.
  */
 class AriaApp : Application() {
 
@@ -16,7 +16,6 @@ class AriaApp : Application() {
         lateinit var instance: AriaApp
             private set
 
-        // Shared OkHttp client for the whole app
         val httpClient: OkHttpClient by lazy {
             OkHttpClient.Builder()
                 .connectTimeout(Config.NETWORK_TIMEOUT_MS, TimeUnit.MILLISECONDS)
@@ -26,13 +25,16 @@ class AriaApp : Application() {
                 .build()
         }
 
-        // Access the ARIA API key safely
         val apiKey: String
             get() {
-                val key = BuildConfig.ARIA_API_KEY
+                val key = try {
+                    BuildConfig.ARIA_API_KEY
+                } catch (e: Exception) {
+                    ""
+                }
+
                 if (key.isBlank() || key == "MISSING_KEY") {
-                    Log.e("AriaApp", "Missing required configuration value: ARIA_API_KEY")
-                    throw IllegalStateException("ARIA_API_KEY is missing! Check your local.properties and build.gradle setup.")
+                    Log.w("AriaApp", "ARIA_API_KEY missing or empty. Some features may not work.")
                 }
                 return key
             }
@@ -42,25 +44,17 @@ class AriaApp : Application() {
         super.onCreate()
         instance = this
 
-        // Initialize app environment
         try {
             setupEnvironment()
             Log.i("AriaApp", "Application started. Global resources initialized.")
-        } catch (ex: IllegalStateException) {
-            Log.e("AriaApp", "Initialization failed: ${ex.message}", ex)
-            throw ex // fatal if configuration is missing
+        } catch (ex: Exception) {
+            Log.e("AriaApp", "Environment setup issue: ${ex.message}", ex)
+            // Do not crash; app continues
         }
     }
 
-    /**
-     * Ensures the environment is correctly configured before the app runs.
-     */
     private fun setupEnvironment() {
-        // Force access to apiKey property; will throw if missing
-        val key = apiKey
-
-        // Here you can add additional initialization logic if needed
-        // e.g., preloading resources, initializing SDKs, etc.
-        Log.i("AriaApp", "Environment setup complete. ARIA_API_KEY available.")
+        val key = apiKey // Logs warning if missing
+        Log.i("AriaApp", "Environment setup complete. API_KEY: ${if (key.isNotBlank()) "Available" else "Missing"}")
     }
 }
