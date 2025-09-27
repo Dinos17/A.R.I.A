@@ -20,14 +20,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    # Map secrets into environment variables for safe usage in steps
-    env:
-      ARIA_API_KEY: ${{ secrets.ARIA_API_KEY }}
-      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-      KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
-      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-
     steps:
       # ------------------------------------------------------------------
       - name: Checkout repository
@@ -44,6 +36,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      # ------------------------------------------------------------------
       - name: Ensure SDK components
         run: |
           set -e
@@ -54,23 +47,19 @@ jobs:
           elif [ -x "$ANDROID_SDK_ROOT/cmdline-tools/bin/sdkmanager" ]; then
             SDKMANAGER_CMD="$ANDROID_SDK_ROOT/cmdline-tools/bin/sdkmanager"
           else
-            echo "sdkmanager not found. Listing $ANDROID_SDK_ROOT:"
+            echo "sdkmanager not found in expected locations. Listing $ANDROID_SDK_ROOT:"
             ls -la "$ANDROID_SDK_ROOT" || true
             exit 1
           fi
-
-          yes | $SDKMANAGER_CMD --sdk_root="$ANDROID_SDK_ROOT" \
-            "platforms;android-${API_LEVEL}" \
-            "build-tools;${BUILD_TOOLS}" \
-            "platform-tools"
+          echo "Using sdkmanager: $SDKMANAGER_CMD"
+          yes | $SDKMANAGER_CMD --sdk_root="$ANDROID_SDK_ROOT" "platforms;android-${API_LEVEL}" "build-tools;${BUILD_TOOLS}" "platform-tools"
           yes | $SDKMANAGER_CMD --sdk_root="$ANDROID_SDK_ROOT" --licenses || true
 
       # ------------------------------------------------------------------
-      - name: Create local.properties with ARIA_API_KEY
-        if: ${{ env.ARIA_API_KEY != '' }}
+      - name: Create local.properties from ARIA_API_KEY secret
         run: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-          echo "ARIA_API_KEY=${{ env.ARIA_API_KEY }}" >> local.properties
+          echo "ARIA_API_KEY=${{ secrets.ARIA_API_KEY }}" >> local.properties
           echo "Created local.properties with ARIA_API_KEY from secret."
 
       # ------------------------------------------------------------------
@@ -99,24 +88,23 @@ jobs:
           fi
           echo "Located unsigned APK: $APK_UNSIGNED"
           echo "APK_UNSIGNED=$APK_UNSIGNED" >> $GITHUB_ENV
-          printf '{"apk":"%s"}' "$APK_UNSIGNED" > $GITHUB_OUTPUT
+          echo "apk=$APK_UNSIGNED" >> $GITHUB_OUTPUT
 
       # ------------------------------------------------------------------
       - name: Decode production keystore (if provided)
-        if: ${{ env.KEYSTORE_BASE64 != '' }}
+        if: ${{ secrets.KEYSTORE_BASE64 }}
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/keystore.jks
         run: |
-          set -e
-          echo "${{ env.KEYSTORE_BASE64 }}" | base64 --decode > "$KEYSTORE_PATH"
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > "$KEYSTORE_PATH"
           echo "Decoded keystore to $KEYSTORE_PATH"
           echo "KEYSTORE_PATH=$KEYSTORE_PATH" >> $GITHUB_ENV
-          echo "KEYSTORE_ALIAS=${{ env.KEYSTORE_ALIAS || env.DEFAULT_KEYSTORE_ALIAS }}" >> $GITHUB_ENV
-          echo "KEYSTORE_PASSWORD=${{ env.KEYSTORE_PASSWORD || env.DEFAULT_KEYSTORE_PASS }}" >> $GITHUB_ENV
-          echo "KEY_PASSWORD=${{ env.KEY_PASSWORD || env.DEFAULT_KEY_PASS }}" >> $GITHUB_ENV
+          echo "KEYSTORE_ALIAS=${{ secrets.KEYSTORE_ALIAS || env.DEFAULT_KEYSTORE_ALIAS }}" >> $GITHUB_ENV
+          echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD || env.DEFAULT_KEYSTORE_PASS }}" >> $GITHUB_ENV
+          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD || env.DEFAULT_KEY_PASS }}" >> $GITHUB_ENV
 
       - name: Generate debug keystore (fallback)
-        if: ${{ env.KEYSTORE_BASE64 == '' }}
+        if: ${{ !secrets.KEYSTORE_BASE64 }}
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/debug.keystore
         run: |
@@ -124,7 +112,9 @@ jobs:
           keytool -genkey -v \
             -keystore "$KEYSTORE_PATH" \
             -alias "${{ env.DEFAULT_KEYSTORE_ALIAS }}" \
-            -keyalg RSA -keysize 2048 -validity 10000 \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
             -storepass "${{ env.DEFAULT_KEYSTORE_PASS }}" \
             -keypass "${{ env.DEFAULT_KEY_PASS }}" \
             -dname "CN=LostMode, OU=Dev, O=LostMode, L=City, ST=State, C=US"
@@ -135,25 +125,17 @@ jobs:
           echo "KEY_PASSWORD=${{ env.DEFAULT_KEY_PASS }}" >> $GITHUB_ENV
 
       # ------------------------------------------------------------------
-      - name: Sign APK with apksigner
+      - name: Sign APK
         env:
-          APK_UNSIGNED: ${{ env.APK_UNSIGNED }}
+          APK_UNSIGNED: ${{ steps.locate_apk.outputs.apk }}
           KEYSTORE_PATH: ${{ env.KEYSTORE_PATH }}
           KEYSTORE_ALIAS: ${{ env.KEYSTORE_ALIAS }}
           KEYSTORE_PASSWORD: ${{ env.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
         run: |
-          set -e
           BUILD_TOOLS_DIR="$ANDROID_SDK_ROOT/build-tools/${BUILD_TOOLS}"
           APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
-          if [ ! -x "$APKSIGNER" ]; then
-            echo "apksigner not found at $APKSIGNER; listing build-tools dir:"
-            ls -la "$ANDROID_SDK_ROOT/build-tools" || true
-            exit 1
-          fi
-
           OUT_SIGNED="$GITHUB_WORKSPACE/${OUTPUT_DIR}/app-release-signed.apk"
-          echo "Signing $APK_UNSIGNED -> $OUT_SIGNED"
           "$APKSIGNER" sign \
             --ks "$KEYSTORE_PATH" \
             --ks-key-alias "$KEYSTORE_ALIAS" \
@@ -161,38 +143,27 @@ jobs:
             --key-pass pass:$KEY_PASSWORD \
             --out "$OUT_SIGNED" \
             "$APK_UNSIGNED"
-
           echo "Signed APK: $OUT_SIGNED"
           echo "SIGNED_APK_PATH=$OUT_SIGNED" >> $GITHUB_ENV
 
       # ------------------------------------------------------------------
-      - name: Align APK (zipalign)
+      - name: Align APK
         run: |
-          set -e
           ZIPALIGN="$ANDROID_SDK_ROOT/build-tools/${BUILD_TOOLS}/zipalign"
-          if [ ! -x "$ZIPALIGN" ]; then
-            echo "zipalign not found at $ZIPALIGN; listing build-tools dir:"
-            ls -la "$ANDROID_SDK_ROOT/build-tools" || true
-            exit 1
-          fi
           IN_APK="$GITHUB_WORKSPACE/${OUTPUT_DIR}/app-release-signed.apk"
           OUT_ALIGNED="$GITHUB_WORKSPACE/${OUTPUT_DIR}/app-release-aligned.apk"
-          echo "Zipaligning $IN_APK -> $OUT_ALIGNED"
           "$ZIPALIGN" -v 4 "$IN_APK" "$OUT_ALIGNED"
+          echo "Aligned APK: $OUT_ALIGNED"
           echo "ALIGNED_APK_PATH=$OUT_ALIGNED" >> $GITHUB_ENV
 
       # ------------------------------------------------------------------
-      - name: Verify signed APK (optional)
+      - name: Verify APK (optional)
         run: |
-          VERIFY_BIN="$ANDROID_SDK_ROOT/build-tools/${BUILD_TOOLS}/apksigner"
-          if [ -x "$VERIFY_BIN" ]; then
-            "$VERIFY_BIN" verify "$GITHUB_WORKSPACE/${OUTPUT_DIR}/app-release-aligned.apk" || true
-          else
-            echo "apksigner not found for verify step; skipping verification"
-          fi
+          APKSIGNER="$ANDROID_SDK_ROOT/build-tools/${BUILD_TOOLS}/apksigner"
+          "$APKSIGNER" verify "$GITHUB_WORKSPACE/${OUTPUT_DIR}/app-release-aligned.apk" || true
 
       # ------------------------------------------------------------------
-      - name: Upload final APK artifact
+      - name: Upload final APK
         uses: actions/upload-artifact@v4
         with:
           name: LostModeClient-APK
