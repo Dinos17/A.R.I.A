@@ -21,7 +21,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # 3. Set up Android SDK
+      # 3. Set up Android SDK with explicit API level and build tools
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
         with:
@@ -43,27 +43,36 @@ jobs:
           echo "APK_UNSIGNED=$APK_UNSIGNED" >> $GITHUB_ENV
           echo "Unsigned APK: $APK_UNSIGNED"
 
-      # 7. Create debug keystore (if not using production keystore)
+      # 7. Generate debug keystore (for signing; replace with production keystore if needed)
       - name: Generate debug keystore
         run: |
-          keytool -genkey -v -keystore debug.keystore -alias lostmodekey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=LostMode, OU=Dev, O=LostMode, L=City, ST=State, C=US"
+          keytool -genkey -v \
+            -keystore debug.keystore \
+            -alias lostmodekey \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass android \
+            -keypass android \
+            -dname "CN=LostMode, OU=Dev, O=LostMode, L=City, ST=State, C=US"
 
-      # 8. Sign APK
+      # 8. Sign APK using correct apksigner path
       - name: Sign APK
         run: |
-          apksigner sign \
+          $ANDROID_SDK_ROOT/build-tools/34.0.0/apksigner sign \
             --ks debug.keystore \
             --ks-key-alias lostmodekey \
             --ks-pass pass:android \
             --key-pass pass:android \
             --out $GITHUB_WORKSPACE/app/build/outputs/apk/release/app-release-signed.apk \
-            ${{ env.APK_UNSIGNED }}
+            $APK_UNSIGNED
 
-      # 9. Align APK
+      # 9. Align APK for installation
       - name: Align APK
         run: |
-          zipalign -v 4 $GITHUB_WORKSPACE/app/build/outputs/apk/release/app-release-signed.apk \
-          $GITHUB_WORKSPACE/app/build/outputs/apk/release/app-release-aligned.apk
+          $ANDROID_SDK_ROOT/build-tools/34.0.0/zipalign -v 4 \
+            $GITHUB_WORKSPACE/app/build/outputs/apk/release/app-release-signed.apk \
+            $GITHUB_WORKSPACE/app/build/outputs/apk/release/app-release-aligned.apk
 
       # 10. Upload aligned APK as artifact
       - name: Upload APK
