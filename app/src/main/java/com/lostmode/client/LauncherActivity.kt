@@ -6,11 +6,16 @@ import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 
 /**
- * Entry point of the app.
- * Redirects user to LoginActivity if not authenticated,
- * otherwise to ModeSelectionActivity.
+ * LauncherActivity
+ *
+ * Entry point of the app. Checks if user is authenticated.
+ * Redirects to LoginActivity if no token, otherwise to ModeSelectionActivity.
  */
 class LauncherActivity : AppCompatActivity() {
+
+    companion object {
+        private const val TAG = "LauncherActivity"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -20,19 +25,18 @@ class LauncherActivity : AppCompatActivity() {
             val token = prefs.getString("auth_token", null)
 
             if (token.isNullOrEmpty()) {
-                Log.i("LauncherActivity", "No auth token found → navigating to LoginActivity")
+                Log.i(TAG, "No auth token found → navigating to LoginActivity")
                 startActivity(Intent(this, LoginActivity::class.java))
             } else {
-                Log.i("LauncherActivity", "Auth token found → navigating to ModeSelectionActivity")
+                Log.i(TAG, "Auth token found → navigating to ModeSelectionActivity")
                 startActivity(Intent(this, ModeSelectionActivity::class.java))
             }
-
         } catch (ex: Exception) {
-            Log.e("LauncherActivity", "Error checking token: ${ex.message}", ex)
-            // Fallback: always go to login
+            Log.e(TAG, "Error checking auth token: ${ex.message}", ex)
+            // Fallback: always navigate to login
             startActivity(Intent(this, LoginActivity::class.java))
+        } finally {
+            finish() // prevent user from returning here
         }
-
-        finish() // prevent user from returning here
     }
 }
