@@ -32,21 +32,21 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # 3. Set up Android SDK
-      - name: Setup Android SDK (bootstrap)
+      # 3. Set up Android SDK (with auto license acceptance)
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          emulator-licenses: true
 
-      # 4. Ensure SDK components are installed
+      # 4. Ensure required SDK components are installed
       - name: Install SDK components
         run: |
           set -e
-          SDKMANAGER_CMD="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
-          if [ ! -x "$SDKMANAGER_CMD" ]; then
-            SDKMANAGER_CMD="$ANDROID_SDK_ROOT/cmdline-tools/bin/sdkmanager"
-          fi
-          echo "Using sdkmanager: $SDKMANAGER_CMD"
-          yes | $SDKMANAGER_CMD --sdk_root="$ANDROID_SDK_ROOT" "platforms;android-${API_LEVEL}" "build-tools;${BUILD_TOOLS}" "platform-tools"
-          yes | $SDKMANAGER_CMD --sdk_root="$ANDROID_SDK_ROOT" --licenses || true
+          yes | sdkmanager --licenses || true
+          yes | sdkmanager --install \
+            "platforms;android-${API_LEVEL}" \
+            "build-tools;${BUILD_TOOLS}" \
+            "platform-tools"
 
       # 5. Create local.properties with ARIA_API_KEY
       - name: Create local.properties
@@ -80,7 +80,7 @@ jobs:
           echo "Located unsigned APK: $APK_UNSIGNED"
           echo "APK_UNSIGNED=$APK_UNSIGNED" >> $GITHUB_ENV
 
-      # 9. Setup keystore (decode secret or generate debug)
+      # 9. Setup keystore (decode secret or generate debug keystore)
       - name: Setup keystore
         run: |
           set -e
@@ -115,47 +115,31 @@ jobs:
         run: |
           set -e
           BUILD_TOOLS_DIR="$ANDROID_SDK_ROOT/build-tools/${BUILD_TOOLS}"
-          APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
-          if [ ! -x "$APKSIGNER" ]; then
-            echo "apksigner not found at $APKSIGNER"
-            ls -la "$BUILD_TOOLS_DIR"
-            exit 1
-          fi
           OUT_SIGNED="$GITHUB_WORKSPACE/${OUTPUT_DIR}/app-release-signed.apk"
-          "$APKSIGNER" sign \
+          "$BUILD_TOOLS_DIR/apksigner" sign \
             --ks "$KEYSTORE_PATH" \
             --ks-key-alias "$KEYSTORE_ALIAS" \
             --ks-pass pass:$KEYSTORE_PASSWORD \
             --key-pass pass:$KEY_PASSWORD \
             --out "$OUT_SIGNED" \
             "$APK_UNSIGNED"
-          echo "Signed APK: $OUT_SIGNED"
           echo "SIGNED_APK_PATH=$OUT_SIGNED" >> $GITHUB_ENV
 
       # 11. Align APK
       - name: Align APK
         run: |
           set -e
-          ZIPALIGN="$ANDROID_SDK_ROOT/build-tools/${BUILD_TOOLS}/zipalign"
-          if [ ! -x "$ZIPALIGN" ]; then
-            echo "zipalign not found at $ZIPALIGN"
-            ls -la "$ANDROID_SDK_ROOT/build-tools/${BUILD_TOOLS}"
-            exit 1
-          fi
+          BUILD_TOOLS_DIR="$ANDROID_SDK_ROOT/build-tools/${BUILD_TOOLS}"
           IN_APK="$GITHUB_WORKSPACE/${OUTPUT_DIR}/app-release-signed.apk"
           OUT_ALIGNED="$GITHUB_WORKSPACE/${OUTPUT_DIR}/app-release-aligned.apk"
-          "$ZIPALIGN" -v 4 "$IN_APK" "$OUT_ALIGNED"
+          "$BUILD_TOOLS_DIR/zipalign" -v 4 "$IN_APK" "$OUT_ALIGNED"
           echo "ALIGNED_APK_PATH=$OUT_ALIGNED" >> $GITHUB_ENV
 
-      # 12. Optional: Verify signed APK
+      # 12. Verify APK
       - name: Verify APK
         run: |
-          APKSIGNER="$ANDROID_SDK_ROOT/build-tools/${BUILD_TOOLS}/apksigner"
-          if [ -x "$APKSIGNER" ]; then
-            "$APKSIGNER" verify "$GITHUB_WORKSPACE/${OUTPUT_DIR}/app-release-aligned.apk" || true
-          else
-            echo "apksigner not found; skipping verification"
-          fi
+          BUILD_TOOLS_DIR="$ANDROID_SDK_ROOT/build-tools/${BUILD_TOOLS}"
+          "$BUILD_TOOLS_DIR/apksigner" verify "$GITHUB_WORKSPACE/${OUTPUT_DIR}/app-release-aligned.apk" || true
 
       # 13. Upload final APK artifact
       - name: Upload APK
