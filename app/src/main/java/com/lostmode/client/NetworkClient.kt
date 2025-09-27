@@ -8,10 +8,11 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 /**
- * Handles all networking for the ARIA Lost Mode Client.
- * Provides public access to the OkHttpClient for other classes.
+ * Central networking client for ARIA Lost Mode Client.
+ * Handles authentication, location updates, device commands, and devices list retrieval.
  */
 object NetworkClient {
 
@@ -19,33 +20,34 @@ object NetworkClient {
     private const val PREFS_NAME = "aria_prefs"
     private const val PREFS_TOKEN_KEY = "auth_token"
 
-    // Public client so DeviceListActivity can access it
+    // Shared OkHttpClient with timeout and retry configured
     val client: OkHttpClient by lazy {
         OkHttpClient.Builder()
+            .connectTimeout(Config.NETWORK_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            .readTimeout(Config.NETWORK_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            .writeTimeout(Config.NETWORK_TIMEOUT_MS, TimeUnit.MILLISECONDS)
             .retryOnConnectionFailure(true)
             .build()
     }
 
     private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
-    // --- Helper to get JWT token ---
+    // --- Token management ---
     private fun getToken(): String? {
-        val prefs = AriaApp.instance
-            .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+        val prefs = AriaApp.instance.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
         return prefs.getString(PREFS_TOKEN_KEY, null)
     }
 
     private fun saveToken(token: String) {
-        val prefs = AriaApp.instance
-            .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+        val prefs = AriaApp.instance.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
         prefs.edit().putString(PREFS_TOKEN_KEY, token).apply()
+        Log.i(TAG, "Auth token saved successfully.")
     }
 
     private fun buildRequest(url: String, body: RequestBody? = null): Request.Builder {
         val builder = Request.Builder().url(url)
-        val token = getToken()
-        if (token != null) builder.addHeader("Authorization", "Bearer $token")
-        if (body != null) builder.post(body)
+        getToken()?.let { builder.addHeader("Authorization", "Bearer $it") }
+        body?.let { builder.post(it) }
         return builder
     }
 
@@ -58,7 +60,12 @@ object NetworkClient {
         sendAuthRequest(Config.SIGNUP_ENDPOINT, email, password, onResult)
     }
 
-    private fun sendAuthRequest(endpoint: String, email: String, password: String, onResult: (Boolean, String?) -> Unit) {
+    private fun sendAuthRequest(
+        endpoint: String,
+        email: String,
+        password: String,
+        onResult: (Boolean, String?) -> Unit
+    ) {
         val payload = JSONObject().apply {
             put("email", email)
             put("password", password)
@@ -75,24 +82,28 @@ object NetworkClient {
 
             override fun onResponse(call: Call, response: Response) {
                 response.use {
-                    val responseBody = it.body?.string()
-                    if (it.isSuccessful && !responseBody.isNullOrEmpty()) {
+                    val respStr = it.body?.string()
+                    if (it.isSuccessful && !respStr.isNullOrEmpty()) {
                         try {
-                            val json = JSONObject(responseBody)
+                            val json = JSONObject(respStr)
                             val token = json.optString("token", "")
                             if (token.isNotEmpty()) {
                                 saveToken(token)
                                 onResult(true, null)
                             } else {
-                                onResult(false, json.optString("message", "Invalid response"))
+                                onResult(false, json.optString("message", "Invalid auth response"))
                             }
                         } catch (ex: Exception) {
                             Log.e(TAG, "Failed to parse auth response: ${ex.message}", ex)
                             onResult(false, "Response parsing error")
                         }
                     } else {
-                        val errorMsg = JSONObject(responseBody ?: "{}").optString("message", "Auth failed")
-                        onResult(false, errorMsg)
+                        val msg = try {
+                            JSONObject(respStr ?: "{}").optString("message", "Auth failed")
+                        } catch (_: Exception) {
+                            "Auth failed"
+                        }
+                        onResult(false, msg)
                     }
                 }
             }
@@ -121,20 +132,19 @@ object NetworkClient {
             override fun onResponse(call: Call, response: Response) {
                 response.use {
                     if (!it.isSuccessful) {
-                        Log.w(TAG, "Unexpected response code: ${it.code}")
+                        Log.w(TAG, "Location update failed: HTTP ${it.code}")
                         return
                     }
-
-                    val responseBody = it.body?.string()
-                    if (!responseBody.isNullOrEmpty()) {
+                    val respStr = it.body?.string()
+                    if (!respStr.isNullOrEmpty()) {
                         try {
-                            val json = JSONObject(responseBody)
+                            val json = JSONObject(respStr)
                             onCommands?.invoke(json)
                         } catch (ex: Exception) {
-                            Log.e(TAG, "Failed to parse server JSON: ${ex.message}", ex)
+                            Log.e(TAG, "Failed to parse server commands JSON: ${ex.message}", ex)
                         }
                     } else {
-                        Log.w(TAG, "Server returned empty response")
+                        Log.w(TAG, "Server returned empty location response")
                     }
                 }
             }
@@ -146,21 +156,21 @@ object NetworkClient {
         val request = buildRequest(Config.DEVICES_ENDPOINT).build()
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                Log.e(TAG, "Failed to fetch devices: ${e.message}", e)
+                Log.e(TAG, "Fetch devices failed: ${e.message}", e)
                 onResult(null)
             }
 
             override fun onResponse(call: Call, response: Response) {
                 response.use {
                     if (!it.isSuccessful) {
-                        Log.w(TAG, "Unexpected response code: ${it.code}")
+                        Log.w(TAG, "Fetch devices failed: HTTP ${it.code}")
                         onResult(null)
                         return
                     }
-                    val responseBody = it.body?.string()
-                    if (!responseBody.isNullOrEmpty()) {
+                    val respStr = it.body?.string()
+                    if (!respStr.isNullOrEmpty()) {
                         try {
-                            val json = JSONArray(responseBody)
+                            val json = JSONArray(respStr)
                             onResult(json)
                         } catch (ex: Exception) {
                             Log.e(TAG, "Failed to parse devices JSON: ${ex.message}", ex)
@@ -174,7 +184,7 @@ object NetworkClient {
         })
     }
 
-    // --- COMMANDS ---
+    // --- DEVICE COMMANDS ---
     fun sendDeviceCommand(deviceId: String, command: JSONObject, onResult: ((Boolean) -> Unit)? = null) {
         val body = command.toString().toRequestBody(JSON_MEDIA_TYPE)
         val url = "${Config.COMMAND_ENDPOINT}/$deviceId"
@@ -189,6 +199,9 @@ object NetworkClient {
             override fun onResponse(call: Call, response: Response) {
                 response.use {
                     onResult?.invoke(it.isSuccessful)
+                    if (!it.isSuccessful) {
+                        Log.w(TAG, "Device command failed: HTTP ${it.code}")
+                    }
                 }
             }
         })
