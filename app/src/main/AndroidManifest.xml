@@ -9,6 +9,9 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
+    <!-- Android 12+ (needed if your service shows notifications) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Optional feature declarations -->
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
@@ -40,7 +43,7 @@
         <service
             android:name=".LostModeService"
             android:exported="false"
-            android:foregroundServiceType="location" />
+            android:foregroundServiceType="location|dataSync" />
 
         <!-- Launcher Activity -->
         <activity
