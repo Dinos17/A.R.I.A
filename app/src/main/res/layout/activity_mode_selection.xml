@@ -32,16 +32,16 @@
         android:layout_marginBottom="16dp"
         android:contentDescription="Select Secure Device Mode" />
 
-    <!-- Logout Button -->
+    <!-- Chat with AI Button -->
     <Button
-        android:id="@+id/btnLogout"
+        android:id="@+id/btnChatAI"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Logout"
+        android:text="Chat with AI"
         android:padding="16dp"
         android:background="@drawable/bg_button_rounded"
         android:backgroundTint="@color/secondaryColor"
         android:textColor="@color/white"
-        android:contentDescription="Logout from ARIA" />
+        android:contentDescription="Chat with AI (future feature)" />
 
 </LinearLayout>
