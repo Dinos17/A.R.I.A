@@ -20,16 +20,6 @@ import androidx.core.content.ContextCompat
 import com.google.android.gms.location.*
 import org.json.JSONObject
 
-/**
- * LostModeService
- *
- * Handles ARIA's "Lost Mode" functionality:
- * - Locks device when commanded by server
- * - Sends location updates periodically
- * - Runs safely in foreground
- *
- * Updated to prevent immediate app exit and handle missing modes or permissions gracefully.
- */
 class LostModeService : Service() {
 
     companion object {
@@ -49,25 +39,27 @@ class LostModeService : Service() {
     override fun onCreate() {
         super.onCreate()
         Log.i(TAG, "Service onCreate")
-
-        // Always run foreground service to prevent Android killing it
         startForeground(NOTIF_ID, buildNotification())
 
         fusedClient = LocationServices.getFusedLocationProviderClient(this)
         dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
         compName = ComponentName(this, AriaDeviceAdminReceiver::class.java)
 
-        // Check if Lost Mode is required
         if (!requiresLostMode()) {
-            Log.i(TAG, "Lost Mode not required — service running idle.")
+            Log.i(TAG, "Lost Mode not required — service idle.")
             return
         }
 
-        // Start location updates if permissions exist
+        // Lock device immediately if admin is active
+        if (dpm!!.isAdminActive(compName!!)) {
+            lockDevice()
+            lostModeActive = true
+        }
+
         if (hasLocationPermission()) {
             startLocationUpdates()
         } else {
-            Log.w(TAG, "Missing location permissions — updates will start after permission granted.")
+            Log.w(TAG, "Missing location permission — updates will start after permission granted.")
         }
     }
 
@@ -84,12 +76,11 @@ class LostModeService : Service() {
             if (nm.getNotificationChannel(CHANNEL_ID) == null) {
                 nm.createNotificationChannel(
                     NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW).apply {
-                        description = "ARIA background service"
+                        description = "ARIA Lost Mode foreground service"
                     }
                 )
             }
         }
-
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("System Update")
             .setContentText("ARIA Lost Mode service running")
@@ -98,9 +89,6 @@ class LostModeService : Service() {
             .build()
     }
 
-    /**
-     * Checks whether the app has all required location permissions.
-     */
     private fun hasLocationPermission(): Boolean {
         val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
         val coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
@@ -113,13 +101,9 @@ class LostModeService : Service() {
                 foreground == PackageManager.PERMISSION_GRANTED
     }
 
-    /**
-     * Starts periodic location updates.
-     * Won't crash if permissions are missing — safe fallback.
-     */
     private fun startLocationUpdates() {
         if (!hasLocationPermission()) {
-            Log.w(TAG, "Location permission not granted — cannot start updates.")
+            Log.w(TAG, "Cannot start location updates — permission missing")
             return
         }
 
@@ -153,27 +137,20 @@ class LostModeService : Service() {
         }
     }
 
-    /**
-     * Handles server commands received via JSON.
-     */
     private fun handleServerCommands(json: JSONObject) {
         if (!lostModeActive && json.optBoolean("lock", false)) {
             lostModeActive = true
-            Log.i(TAG, "Lock command received from server.")
             lockDevice()
             if (hasLocationPermission()) startLocationUpdates()
         }
     }
 
-    /**
-     * Locks device if Device Admin is active.
-     */
     private fun lockDevice() {
         if (dpm != null && compName != null && dpm!!.isAdminActive(compName!!)) {
             dpm!!.lockNow()
             Log.i(TAG, "Device locked by Lost Mode.")
         } else {
-            Log.w(TAG, "Device admin not active — cannot lock.")
+            Log.w(TAG, "Device admin inactive — cannot lock.")
         }
     }
 
@@ -183,13 +160,9 @@ class LostModeService : Service() {
         super.onDestroy()
     }
 
-    /**
-     * Returns true if user selected a mode that requires Lost Mode.
-     * Safe fallback: if no mode is set, returns false without crashing.
-     */
     private fun requiresLostMode(): Boolean {
         val prefs = getSharedPreferences("ARIA_PREFS", Context.MODE_PRIVATE)
-        val mode = prefs.getString("user_mode", "AI") // default = AI
+        val mode = prefs.getString("user_mode", "AI")
         val required = mode == "SECURE" || mode == "BOTH"
         Log.i(TAG, "Mode check: user_mode=$mode | requiresLostMode=$required")
         return required
