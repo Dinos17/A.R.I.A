@@ -45,14 +45,12 @@ class MainActivity : AppCompatActivity() {
 
         try {
             if (!isLoggedIn()) {
-                Log.i("MainActivity", "User not logged in → redirecting to LoginActivity")
                 startActivity(Intent(this, LoginActivity::class.java))
                 finish()
                 return
             }
 
             if (!isModeSelected()) {
-                Log.i("MainActivity", "User mode not set → redirecting to ModeSelectionActivity")
                 startActivity(Intent(this, ModeSelectionActivity::class.java))
                 finish()
                 return
@@ -65,13 +63,13 @@ class MainActivity : AppCompatActivity() {
                     proceedAfterPermissions()
                 }
             } else {
-                navigateToDevicesScreen()
+                showDeviceDashboard()
             }
 
         } catch (ex: Exception) {
             Log.e("MainActivity", "Error initializing MainActivity: ${ex.message}", ex)
             Toast.makeText(this, "App initialization error: ${ex.message}", Toast.LENGTH_LONG).show()
-            navigateToDevicesScreen()
+            showDeviceDashboard()
         }
     }
 
@@ -97,7 +95,7 @@ class MainActivity : AppCompatActivity() {
         } catch (ex: Exception) {
             Log.e("MainActivity", "Error during Device Admin / LostMode setup: ${ex.message}", ex)
             Toast.makeText(this, "Lost Mode initialization failed", Toast.LENGTH_LONG).show()
-            navigateToDevicesScreen()
+            showDeviceDashboard()
         }
     }
 
@@ -109,36 +107,34 @@ class MainActivity : AppCompatActivity() {
             startService(svcIntent)
         }
 
-        // Show toast to indicate secure mode is starting
         Toast.makeText(this, "Secure Mode setup started", Toast.LENGTH_SHORT).show()
 
-        // Navigate to DeviceList after a small delay to show loading
         Handler(Looper.getMainLooper()).postDelayed({
             Toast.makeText(this, "Secure Mode active", Toast.LENGTH_SHORT).show()
-            navigateToDevicesScreen()
+            showDeviceDashboard()
         }, 1500)
+    }
+
+    private fun showDeviceDashboard() {
+        // TODO: Implement the device dashboard view
+        // Display:
+        // - Device name
+        // - Device photo
+        // - Live location
+        // Navigation to DeviceListActivity only if multiple devices exist
+        startActivity(Intent(this, DeviceListActivity::class.java))
+        finish()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 1001) {
             if (resultCode == Activity.RESULT_OK) {
-                Log.i("MainActivity", "Device Admin granted")
                 startLostModeService()
             } else {
                 Toast.makeText(this, "Device Admin permission required for Secure Mode", Toast.LENGTH_LONG).show()
-                navigateToDevicesScreen()
+                showDeviceDashboard()
             }
-        }
-    }
-
-    private fun navigateToDevicesScreen() {
-        try {
-            startActivity(Intent(this, DeviceListActivity::class.java))
-        } catch (ex: Exception) {
-            Log.e("MainActivity", "Failed to navigate to DeviceListActivity: ${ex.message}", ex)
-        } finally {
-            finish()
         }
     }
 
