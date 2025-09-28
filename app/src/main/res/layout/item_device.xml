@@ -9,7 +9,7 @@
     android:layout_marginTop="4dp"
     android:layout_marginStart="4dp"
     android:layout_marginEnd="4dp"
-    android:padding="16dp"
+    android:padding="12dp"
     android:clickable="true"
     android:foreground="?attr/selectableItemBackground"
     android:focusable="true"
@@ -24,25 +24,52 @@
         android:orientation="horizontal"
         android:gravity="center_vertical">
 
-        <!-- Device Name -->
-        <TextView
-            android:id="@+id/txtDeviceName"
+        <!-- Device Photo -->
+        <ImageView
+            android:id="@+id/imgDevicePhoto"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@mipmap/ic_launcher"
+            android:contentDescription="Device photo"
+            android:scaleType="centerCrop"
+            android:layout_marginEnd="12dp"
+            android:background="@drawable/bg_circle"
+            android:clipToOutline="true" />
+
+        <!-- Device Name and Status -->
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Device Name"
-            android:textSize="18sp"
-            android:textColor="@color/textColorPrimary"
-            android:textStyle="bold"
-            android:ellipsize="end"
-            android:singleLine="true" />
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/txtDeviceName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Device Name"
+                android:textSize="18sp"
+                android:textColor="@color/textColorPrimary"
+                android:textStyle="bold"
+                android:ellipsize="end"
+                android:singleLine="true" />
+
+            <TextView
+                android:id="@+id/txtDeviceStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Offline"
+                android:textSize="14sp"
+                android:textColor="@color/textColorSecondary" />
+
+        </LinearLayout>
 
         <!-- Optional status icon -->
         <ImageView
             android:id="@+id/imgDeviceStatus"
             android:layout_width="24dp"
             android:layout_height="24dp"
-            android:src="@drawable/ic_device_online"
+            android:src="@drawable/ic_device_offline"
             android:contentDescription="Device status"
             android:layout_marginStart="8dp" />
 
