@@ -1,10 +1,7 @@
 package com.lostmode.client
 
 import android.Manifest
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.Service
+import android.app.*
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
@@ -50,17 +47,13 @@ class LostModeService : Service() {
             return
         }
 
-        // Lock device immediately if admin is active
-        if (dpm!!.isAdminActive(compName!!)) {
+        if (dpm?.isAdminActive(compName!!) == true) {
             lockDevice()
             lostModeActive = true
         }
 
-        if (hasLocationPermission()) {
-            startLocationUpdates()
-        } else {
-            Log.w(TAG, "Missing location permission — updates will start after permission granted.")
-        }
+        if (hasLocationPermission()) startLocationUpdates()
+        else Log.w(TAG, "Missing location permission — waiting to start updates.")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -102,12 +95,9 @@ class LostModeService : Service() {
     }
 
     private fun startLocationUpdates() {
-        if (!hasLocationPermission()) {
-            Log.w(TAG, "Cannot start location updates — permission missing")
-            return
-        }
+        if (!hasLocationPermission()) return
 
-        val request: LocationRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val request = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             LocationRequest.Builder(INTERVAL_MS)
                 .setMinUpdateIntervalMillis(FASTEST_MS)
                 .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
@@ -126,13 +116,12 @@ class LostModeService : Service() {
 
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
-            val loc: Location? = result.lastLocation
-            if (loc != null && lostModeActive) {
-                val mapLink = "https://maps.google.com/?q=${loc.latitude},${loc.longitude}"
-                Log.d(TAG, "Lost Mode Location: ${loc.latitude},${loc.longitude} | $mapLink")
-                NetworkClient.sendLocationToServer(loc) { json ->
-                    try { handleServerCommands(json) } catch (_: Exception) { }
-                }
+            val loc = result.lastLocation ?: return
+            if (!lostModeActive) return
+
+            Log.d(TAG, "Lost Mode Location: ${loc.latitude},${loc.longitude}")
+            NetworkClient.sendLocationToServer(loc) { json ->
+                handleServerCommands(json)
             }
         }
     }
@@ -146,7 +135,7 @@ class LostModeService : Service() {
     }
 
     private fun lockDevice() {
-        if (dpm != null && compName != null && dpm!!.isAdminActive(compName!!)) {
+        if (dpm?.isAdminActive(compName!!) == true) {
             dpm!!.lockNow()
             Log.i(TAG, "Device locked by Lost Mode.")
         } else {
