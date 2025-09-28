@@ -6,13 +6,16 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <!-- Background location only needed up to Android 13 -->
+    <uses-permission
+        android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
+        android:maxSdkVersion="33"/>
+    <!-- Foreground service location for Android 34+ -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-
-    <!-- Android 12+ (needed if your service shows notifications) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Optional feature declarations -->
+    <!-- Optional features -->
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
     <application
@@ -26,7 +29,7 @@
         android:theme="@style/Theme.AppCompat.Light.NoActionBar"
         android:largeHeap="true">
 
-        <!-- Device admin receiver (LOCK only, no wipe) -->
+        <!-- Device admin receiver -->
         <receiver
             android:name=".AriaDeviceAdminReceiver"
             android:permission="android.permission.BIND_DEVICE_ADMIN"
@@ -39,7 +42,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- Foreground service for Lost Mode -->
+        <!-- Lost Mode foreground service -->
         <service
             android:name=".LostModeService"
             android:exported="false"
