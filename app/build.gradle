@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
+    id 'kotlin-kapt' // Required for Glide compiler
 }
 
 android {
@@ -17,7 +18,7 @@ android {
         // Optional: for future multidex support
         multiDexEnabled true
 
-        // ✅ Inject ARIA_API_KEY from local.properties
+        // Inject ARIA_API_KEY from local.properties
         buildConfigField "String", "ARIA_API_KEY", "\"${project.properties['ARIA_API_KEY'] ?: "MISSING_KEY"}\""
     }
 
@@ -41,7 +42,6 @@ android {
         freeCompilerArgs += ["-Xjvm-default=all"]
     }
 
-    // ✅ Enable BuildConfig generation explicitly
     buildFeatures {
         buildConfig true
     }
@@ -51,7 +51,12 @@ android {
             useLegacyPackaging = true
         }
         resources {
-            excludes += ["META-INF/DEPENDENCIES", "META-INF/LICENSE", "META-INF/LICENSE.txt", "META-INF/NOTICE.txt"]
+            excludes += [
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/NOTICE.txt"
+            ]
         }
     }
 }
@@ -59,7 +64,7 @@ android {
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.0"
 
-    // Location
+    // Location services
     implementation 'com.google.android.gms:play-services-location:21.0.1'
 
     // AndroidX core + UI
@@ -76,4 +81,8 @@ dependencies {
 
     // Optional: multidex support if your method count grows
     implementation 'androidx.multidex:multidex:2.0.1'
+
+    // Glide for image loading
+    implementation 'com.github.bumptech.glide:glide:4.15.1'
+    kapt 'com.github.bumptech.glide:compiler:4.15.1'
 }
