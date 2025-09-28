@@ -27,6 +27,7 @@ object NetworkClient {
 
     private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
+    // --- Token Management ---
     private fun getToken(): String? {
         val prefs = AriaApp.instance.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
         return prefs.getString(PREFS_TOKEN_KEY, null)
@@ -46,11 +47,13 @@ object NetworkClient {
     }
 
     // --- AUTH ---
-    fun login(email: String, password: String, onResult: (Boolean, String?) -> Unit) =
+    fun login(email: String, password: String, onResult: (Boolean, String?) -> Unit) {
         sendAuthRequest(Config.LOGIN_ENDPOINT, email, password, onResult)
+    }
 
-    fun signup(email: String, password: String, onResult: (Boolean, String?) -> Unit) =
+    fun signup(email: String, password: String, onResult: (Boolean, String?) -> Unit) {
         sendAuthRequest(Config.SIGNUP_ENDPOINT, email, password, onResult)
+    }
 
     private fun sendAuthRequest(endpoint: String, email: String, password: String, onResult: (Boolean, String?) -> Unit) {
         val payload = JSONObject().apply {
@@ -58,36 +61,37 @@ object NetworkClient {
             put("password", password)
         }
         val body = payload.toString().toRequestBody(JSON_MEDIA_TYPE)
-        client.newCall(Request.Builder().url(endpoint).post(body).build()).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.e(TAG, "Auth failed: ${e.message}", e)
-                onResult(false, "Network error: ${e.message}")
-            }
+        client.newCall(Request.Builder().url(endpoint).post(body).build())
+            .enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    Log.e(TAG, "Auth failed: ${e.message}", e)
+                    onResult(false, "Network error: ${e.message}")
+                }
 
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    val respStr = it.body?.string()
-                    if (it.isSuccessful && !respStr.isNullOrEmpty()) {
-                        try {
-                            val json = JSONObject(respStr)
-                            val token = json.optString("token", "")
-                            if (token.isNotEmpty()) {
-                                saveToken(token)
-                                onResult(true, null)
-                            } else {
-                                onResult(false, json.optString("message", "Invalid response"))
+                override fun onResponse(call: Call, response: Response) {
+                    response.use {
+                        val respStr = it.body?.string()
+                        if (it.isSuccessful && !respStr.isNullOrEmpty()) {
+                            try {
+                                val json = JSONObject(respStr)
+                                val token = json.optString("token", "")
+                                if (token.isNotEmpty()) {
+                                    saveToken(token)
+                                    onResult(true, null)
+                                } else {
+                                    onResult(false, json.optString("message", "Invalid response"))
+                                }
+                            } catch (ex: Exception) {
+                                Log.e(TAG, "Auth JSON parse error: ${ex.message}", ex)
+                                onResult(false, "Parsing error")
                             }
-                        } catch (ex: Exception) {
-                            Log.e(TAG, "Auth JSON parse error: ${ex.message}", ex)
-                            onResult(false, "Parsing error")
+                        } else {
+                            val msg = try { JSONObject(respStr ?: "{}").optString("message", "Auth failed") } catch (_: Exception) { "Auth failed" }
+                            onResult(false, msg)
                         }
-                    } else {
-                        val msg = try { JSONObject(respStr ?: "{}").optString("message", "Auth failed") } catch (_: Exception) { "Auth failed" }
-                        onResult(false, msg)
                     }
                 }
-            }
-        })
+            })
     }
 
     // --- LOCATION ---
@@ -100,45 +104,59 @@ object NetworkClient {
             put("map_link", "https://maps.google.com/?q=${location.latitude},${location.longitude}")
         }
         val body = payload.toString().toRequestBody(JSON_MEDIA_TYPE)
-        client.newCall(buildRequest(Config.UPDATE_ENDPOINT, body).build()).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) = Log.e(TAG, "Location send failed: ${e.message}", e)
+        client.newCall(buildRequest(Config.UPDATE_ENDPOINT, body).build())
+            .enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    Log.e(TAG, "Location send failed: ${e.message}", e)
+                }
 
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    if (!it.isSuccessful) {
-                        Log.w(TAG, "Location update failed: HTTP ${it.code}")
-                        return
-                    }
-                    it.body?.string()?.let { respStr ->
-                        try { onCommands?.invoke(JSONObject(respStr)) } catch (ex: Exception) { Log.e(TAG, "Command parse error: ${ex.message}", ex) }
+                override fun onResponse(call: Call, response: Response) {
+                    response.use {
+                        if (!it.isSuccessful) {
+                            Log.w(TAG, "Location update failed: HTTP ${it.code}")
+                            return
+                        }
+                        val respStr = it.body?.string()
+                        if (!respStr.isNullOrEmpty()) {
+                            try {
+                                onCommands?.invoke(JSONObject(respStr))
+                            } catch (ex: Exception) {
+                                Log.e(TAG, "Command parse error: ${ex.message}", ex)
+                            }
+                        }
                     }
                 }
-            }
-        })
+            })
     }
 
     // --- DEVICES ---
     fun fetchDevices(onResult: (JSONArray?) -> Unit) {
-        client.newCall(buildRequest(Config.DEVICES_ENDPOINT).build()).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.e(TAG, "Fetch devices failed: ${e.message}", e)
-                onResult(null)
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    if (!it.isSuccessful) {
-                        Log.w(TAG, "Fetch devices failed: HTTP ${it.code}")
-                        onResult(null)
-                        return
-                    }
-                    val respStr = it.body?.string()
-                    if (!respStr.isNullOrEmpty()) {
-                        try { onResult(JSONArray(respStr)) } catch (ex: Exception) { Log.e(TAG, "Device JSON parse error: ${ex.message}", ex); onResult(null) }
-                    } else onResult(null)
+        client.newCall(buildRequest(Config.DEVICES_ENDPOINT).build())
+            .enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    Log.e(TAG, "Fetch devices failed: ${e.message}", e)
+                    onResult(null)
                 }
-            }
-        })
+
+                override fun onResponse(call: Call, response: Response) {
+                    response.use {
+                        if (!it.isSuccessful) {
+                            Log.w(TAG, "Fetch devices failed: HTTP ${it.code}")
+                            onResult(null)
+                            return
+                        }
+                        val respStr = it.body?.string()
+                        if (!respStr.isNullOrEmpty()) {
+                            try {
+                                onResult(JSONArray(respStr))
+                            } catch (ex: Exception) {
+                                Log.e(TAG, "Device JSON parse error: ${ex.message}", ex)
+                                onResult(null)
+                            }
+                        } else onResult(null)
+                    }
+                }
+            })
     }
 
     // --- DEVICE COMMANDS ---
@@ -152,8 +170,10 @@ object NetworkClient {
             }
 
             override fun onResponse(call: Call, response: Response) {
-                response.use { onResult?.invoke(it.isSuccessful) }
-                if (!response.isSuccessful) Log.w(TAG, "Device command failed: HTTP ${response.code}")
+                response.use {
+                    onResult?.invoke(it.isSuccessful)
+                    if (!it.isSuccessful) Log.w(TAG, "Device command failed: HTTP ${it.code}")
+                }
             }
         })
     }
