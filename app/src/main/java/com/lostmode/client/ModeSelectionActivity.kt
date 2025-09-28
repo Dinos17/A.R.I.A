@@ -2,6 +2,7 @@ package com.lostmode.client
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -35,16 +36,23 @@ class ModeSelectionActivity : AppCompatActivity() {
                 .putString("user_mode", "SECURE")
                 .apply()
 
-            // Start MainActivity (Secure Device dashboard)
-            startActivity(Intent(this, MainActivity::class.java))
+            // Navigate to MainActivity so it can handle permission + admin checks
+            val intent = Intent(this, MainActivity::class.java).apply {
+                // Clear back stack so user can’t return here with back button
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            startActivity(intent)
             finish()
+
         } catch (ex: Exception) {
+            Log.e("ModeSelectionActivity", "Error selecting secure mode", ex)
             Toast.makeText(this, "Failed to select mode: ${ex.message}", Toast.LENGTH_LONG).show()
         }
     }
 
     private fun launchChatAI() {
         Toast.makeText(this, "Chat with AI feature coming soon!", Toast.LENGTH_SHORT).show()
-        // Future: startActivity(Intent(this, ChatAIActivity::class.java))
+        // Future:
+        // startActivity(Intent(this, ChatAIActivity::class.java))
     }
 }
