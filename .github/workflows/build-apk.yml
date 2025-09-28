@@ -21,60 +21,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Set up JDK 17
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: 17
 
-      # 3. Set up Android SDK
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
           cmdline-tools-version: 12266719
           accept-android-sdk-licenses: true
           log-accepted-android-sdk-licenses: true
-          packages: platform-tools tools
+          packages: platform-tools "platforms;android-${{ env.API_LEVEL }}" "build-tools;${{ env.BUILD_TOOLS }}"
 
-      # 4. Force accept any remaining licenses (fail-safe)
       - name: Force Accept Remaining SDK Licenses
         run: |
           yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-      # 5. Install required SDK components
-      - name: Install SDK components
-        run: |
-          set -e
-          yes | sdkmanager --install \
-            "platforms;android-${API_LEVEL}" \
-            "build-tools;${BUILD_TOOLS}" \
-            "platform-tools"
-
-      # 6. Create local.properties with ARIA_API_KEY
-      - name: Create local.properties
-        run: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-          echo "ARIA_API_KEY=${{ secrets.ARIA_API_KEY }}" >> local.properties
-          echo "Created local.properties with ARIA_API_KEY"
-
-      # 7. Make Gradle wrapper executable
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      # 8. Build release APK
       - name: Build release APK
         run: ./gradlew clean assembleRelease --no-daemon
 
-      # 9. Locate unsigned APK
       - name: Locate unsigned APK
+        id: locate
         run: |
           set -e
-          OUTPUT="${GITHUB_WORKSPACE}/${OUTPUT_DIR}"
+          OUTPUT="${GITHUB_WORKSPACE}/${{ env.OUTPUT_DIR }}"
           APK_UNSIGNED=$(find "$OUTPUT" -type f -name '*-unsigned.apk' -print | head -n 1 || true)
           if [ -z "$APK_UNSIGNED" ]; then
             APK_UNSIGNED=$(find "$OUTPUT" -type f -name '*.apk' -print | head -n 1 || true)
@@ -86,21 +64,25 @@ jobs:
           fi
           echo "Located unsigned APK: $APK_UNSIGNED"
           echo "APK_UNSIGNED=$APK_UNSIGNED" >> $GITHUB_ENV
+          echo "::set-output name=apk_unsigned::$APK_UNSIGNED"
 
-      # 10. Setup keystore (decode secret or generate debug)
-      - name: Setup keystore
+      - name: Setup keystore (use secret or generate debug)
+        id: keystore
         run: |
           set -e
+          # If you set KEYSTORE_BASE64 secret, it will be used.
           if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > keystore.jks
-            KEYSTORE_PATH=keystore.jks
+            echo "Using provided KEYSTORE_BASE64 secret (decoded to release.keystore)"
+            printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
+            KEYSTORE_PATH=release.keystore
             KEYSTORE_ALIAS="${{ secrets.KEYSTORE_ALIAS }}"
             KEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}"
             KEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
+            echo "Note: using release keystore from secrets"
           else
-            KEYSTORE_PATH=debug.keystore
+            echo "No KEYSTORE_BASE64 secret found — generating temporary debug.keystore (NOT for Play Store release)"
             keytool -genkey -v \
-              -keystore "$KEYSTORE_PATH" \
+              -keystore debug.keystore \
               -alias "${{ env.DEFAULT_KEYSTORE_ALIAS }}" \
               -keyalg RSA \
               -keysize 2048 \
@@ -108,48 +90,86 @@ jobs:
               -storepass "${{ env.DEFAULT_KEYSTORE_PASS }}" \
               -keypass "${{ env.DEFAULT_KEY_PASS }}" \
               -dname "CN=LostMode, OU=Dev, O=LostMode, L=City, ST=State, C=US"
+            KEYSTORE_PATH=debug.keystore
             KEYSTORE_ALIAS="${{ env.DEFAULT_KEYSTORE_ALIAS }}"
             KEYSTORE_PASSWORD="${{ env.DEFAULT_KEYSTORE_PASS }}"
             KEY_PASSWORD="${{ env.DEFAULT_KEY_PASS }}"
           fi
+
           echo "KEYSTORE_PATH=$KEYSTORE_PATH" >> $GITHUB_ENV
           echo "KEYSTORE_ALIAS=$KEYSTORE_ALIAS" >> $GITHUB_ENV
           echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> $GITHUB_ENV
           echo "KEY_PASSWORD=$KEY_PASSWORD" >> $GITHUB_ENV
+          echo "::set-output name=keystore_path::$KEYSTORE_PATH"
 
-      # 11. Sign APK
+      - name: Find build-tools directory (use latest installed)
+        id: buildtools
+        run: |
+          set -e
+          # choose the newest build-tools folder that exists
+          BUILD_TOOLS_DIR=$(ls -d "$ANDROID_SDK_ROOT"/build-tools/* 2>/dev/null | sort -V | tail -n1 || true)
+          if [ -z "$BUILD_TOOLS_DIR" ]; then
+            echo "ERROR: No build-tools found under $ANDROID_SDK_ROOT/build-tools"
+            ls -R "$ANDROID_SDK_ROOT" || true
+            exit 1
+          fi
+          echo "Using build-tools directory: $BUILD_TOOLS_DIR"
+          echo "BUILD_TOOLS_DIR=$BUILD_TOOLS_DIR" >> $GITHUB_ENV
+          echo "::set-output name=build_tools_dir::$BUILD_TOOLS_DIR"
+
       - name: Sign APK
         run: |
           set -e
-          BUILD_TOOLS_DIR="$ANDROID_SDK_ROOT/build-tools/${BUILD_TOOLS}"
-          OUT_SIGNED="$GITHUB_WORKSPACE/${OUTPUT_DIR}/app-release-signed.apk"
+          if [ -z "${APK_UNSIGNED}" ]; then
+            echo "APK_UNSIGNED is not set"
+            exit 1
+          fi
+          BUILD_TOOLS_DIR="${{ env.BUILD_TOOLS_DIR:-$ANDROID_SDK_ROOT/build-tools/${{ env.BUILD_TOOLS }}}"
+          # prefer discovered BUILD_TOOLS_DIR output
+          if [ -n "${{ steps.buildtools.outputs.build_tools_dir }}" ]; then
+            BUILD_TOOLS_DIR="${{ steps.buildtools.outputs.build_tools_dir }}"
+          fi
+          echo "Signing using apksigner from: $BUILD_TOOLS_DIR"
+          OUT_SIGNED="$GITHUB_WORKSPACE/${{ env.OUTPUT_DIR }}/app-release-signed.apk"
           "$BUILD_TOOLS_DIR/apksigner" sign \
             --ks "$KEYSTORE_PATH" \
             --ks-key-alias "$KEYSTORE_ALIAS" \
-            --ks-pass pass:$KEYSTORE_PASSWORD \
-            --key-pass pass:$KEY_PASSWORD \
+            --ks-pass "pass:$KEYSTORE_PASSWORD" \
+            --key-pass "pass:$KEY_PASSWORD" \
             --out "$OUT_SIGNED" \
             "$APK_UNSIGNED"
           echo "SIGNED_APK_PATH=$OUT_SIGNED" >> $GITHUB_ENV
+          ls -l "$OUT_SIGNED" || true
 
-      # 12. Align APK
       - name: Align APK
         run: |
           set -e
-          BUILD_TOOLS_DIR="$ANDROID_SDK_ROOT/build-tools/${BUILD_TOOLS}"
-          IN_APK="$GITHUB_WORKSPACE/${OUTPUT_DIR}/app-release-signed.apk"
-          OUT_ALIGNED="$GITHUB_WORKSPACE/${OUTPUT_DIR}/app-release-aligned.apk"
+          BUILD_TOOLS_DIR="${{ steps.buildtools.outputs.build_tools_dir }}"
+          IN_APK="$GITHUB_WORKSPACE/${{ env.OUTPUT_DIR }}/app-release-signed.apk"
+          OUT_ALIGNED="$GITHUB_WORKSPACE/${{ env.OUTPUT_DIR }}/app-release-aligned.apk"
+          if [ ! -f "$IN_APK" ]; then
+            echo "ERROR: signed APK not found at $IN_APK"
+            ls -R "${GITHUB_WORKSPACE}/${{ env.OUTPUT_DIR }}" || true
+            exit 1
+          fi
           "$BUILD_TOOLS_DIR/zipalign" -v 4 "$IN_APK" "$OUT_ALIGNED"
           echo "ALIGNED_APK_PATH=$OUT_ALIGNED" >> $GITHUB_ENV
+          ls -l "$OUT_ALIGNED" || true
 
-      # 13. Verify APK
       - name: Verify APK
         run: |
-          BUILD_TOOLS_DIR="$ANDROID_SDK_ROOT/build-tools/${BUILD_TOOLS}"
-          "$BUILD_TOOLS_DIR/apksigner" verify "$GITHUB_WORKSPACE/${OUTPUT_DIR}/app-release-aligned.apk" || true
+          set -e
+          BUILD_TOOLS_DIR="${{ steps.buildtools.outputs.build_tools_dir }}"
+          ALIGNED="$GITHUB_WORKSPACE/${{ env.OUTPUT_DIR }}/app-release-aligned.apk"
+          if [ -f "$ALIGNED" ]; then
+            echo "Verifying $ALIGNED"
+            "$BUILD_TOOLS_DIR/apksigner" verify --print-certs "$ALIGNED"
+          else
+            echo "No aligned apk found to verify"
+            exit 1
+          fi
 
-      # 14. Upload final APK artifact
-      - name: Upload APK
+      - name: Upload final APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: LostModeClient-APK
