@@ -23,7 +23,7 @@
         android:theme="@style/Theme.AppCompat.Light.NoActionBar"
         android:largeHeap="true">
 
-        <!-- Device admin receiver -->
+        <!-- Device admin receiver (LOCK only, no wipe) -->
         <receiver
             android:name=".AriaDeviceAdminReceiver"
             android:permission="android.permission.BIND_DEVICE_ADMIN"
@@ -36,7 +36,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- Foreground service used for Lost Mode -->
+        <!-- Foreground service for Lost Mode -->
         <service
             android:name=".LostModeService"
             android:exported="false"
