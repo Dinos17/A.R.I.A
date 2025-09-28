@@ -36,24 +36,34 @@ class LostModeService : Service() {
     override fun onCreate() {
         super.onCreate()
         Log.i(TAG, "Service onCreate")
+
+        // Foreground service notification must be started immediately
         startForeground(NOTIF_ID, buildNotification())
 
         fusedClient = LocationServices.getFusedLocationProviderClient(this)
         dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
         compName = ComponentName(this, AriaDeviceAdminReceiver::class.java)
 
+        // Skip Lost Mode setup if not required
         if (!requiresLostMode()) {
             Log.i(TAG, "Lost Mode not required — service idle.")
             return
         }
 
+        // Attempt to lock device if admin is active
         if (dpm?.isAdminActive(compName!!) == true) {
             lockDevice()
             lostModeActive = true
+        } else {
+            Log.w(TAG, "Device admin not active — cannot lock.")
         }
 
-        if (hasLocationPermission()) startLocationUpdates()
-        else Log.w(TAG, "Missing location permission — waiting to start updates.")
+        // Try to start location updates
+        if (hasLocationPermission()) {
+            startLocationUpdates()
+        } else {
+            Log.w(TAG, "Missing location permission — service running but location updates blocked.")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -75,9 +85,10 @@ class LostModeService : Service() {
             }
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("System Update")
-            .setContentText("ARIA Lost Mode service running")
+            .setContentTitle("Secure Mode Active")
+            .setContentText("ARIA is protecting this device.")
             .setSmallIcon(android.R.drawable.ic_lock_lock)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
     }
@@ -85,17 +96,24 @@ class LostModeService : Service() {
     private fun hasLocationPermission(): Boolean {
         val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
         val coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-        val foreground = if (Build.VERSION.SDK_INT >= 34)
+        val background = if (Build.VERSION.SDK_INT >= 29) {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        } else PackageManager.PERMISSION_GRANTED
+        val foreground = if (Build.VERSION.SDK_INT >= 34) {
             ContextCompat.checkSelfPermission(this, Manifest.permission.FOREGROUND_SERVICE_LOCATION)
-        else PackageManager.PERMISSION_GRANTED
+        } else PackageManager.PERMISSION_GRANTED
 
         return fine == PackageManager.PERMISSION_GRANTED &&
                 coarse == PackageManager.PERMISSION_GRANTED &&
+                background == PackageManager.PERMISSION_GRANTED &&
                 foreground == PackageManager.PERMISSION_GRANTED
     }
 
     private fun startLocationUpdates() {
-        if (!hasLocationPermission()) return
+        if (!hasLocationPermission()) {
+            Log.w(TAG, "startLocationUpdates called without permissions.")
+            return
+        }
 
         val request = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             LocationRequest.Builder(INTERVAL_MS)
@@ -103,6 +121,7 @@ class LostModeService : Service() {
                 .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
                 .build()
         } else {
+            @Suppress("DEPRECATION")
             LocationRequest.create().apply {
                 interval = INTERVAL_MS
                 fastestInterval = FASTEST_MS
@@ -110,16 +129,22 @@ class LostModeService : Service() {
             }
         }
 
-        fusedClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
-        Log.i(TAG, "Location updates started.")
+        try {
+            fusedClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
+            Log.i(TAG, "Location updates started.")
+        } catch (ex: SecurityException) {
+            Log.e(TAG, "Missing permissions for location updates", ex)
+        } catch (ex: Exception) {
+            Log.e(TAG, "Error starting location updates", ex)
+        }
     }
 
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
-            val loc = result.lastLocation ?: return
+            val loc: Location = result.lastLocation ?: return
             if (!lostModeActive) return
 
-            Log.d(TAG, "Lost Mode Location: ${loc.latitude},${loc.longitude}")
+            Log.d(TAG, "Lost Mode Location: ${loc.latitude}, ${loc.longitude}")
             NetworkClient.sendLocationToServer(loc) { json ->
                 handleServerCommands(json)
             }
@@ -127,24 +152,34 @@ class LostModeService : Service() {
     }
 
     private fun handleServerCommands(json: JSONObject) {
-        if (!lostModeActive && json.optBoolean("lock", false)) {
-            lostModeActive = true
-            lockDevice()
-            if (hasLocationPermission()) startLocationUpdates()
+        if (json.optBoolean("lock", false)) {
+            if (!lostModeActive) {
+                lostModeActive = true
+                lockDevice()
+                if (hasLocationPermission()) startLocationUpdates()
+            }
         }
     }
 
     private fun lockDevice() {
-        if (dpm?.isAdminActive(compName!!) == true) {
-            dpm!!.lockNow()
-            Log.i(TAG, "Device locked by Lost Mode.")
-        } else {
-            Log.w(TAG, "Device admin inactive — cannot lock.")
+        try {
+            if (dpm?.isAdminActive(compName!!) == true) {
+                dpm!!.lockNow()
+                Log.i(TAG, "Device locked by Lost Mode.")
+            } else {
+                Log.w(TAG, "Device admin inactive — cannot lock.")
+            }
+        } catch (ex: Exception) {
+            Log.e(TAG, "Error locking device", ex)
         }
     }
 
     override fun onDestroy() {
-        try { fusedClient.removeLocationUpdates(locationCallback) } catch (_: Exception) {}
+        try {
+            fusedClient.removeLocationUpdates(locationCallback)
+        } catch (ex: Exception) {
+            Log.w(TAG, "Error removing location updates", ex)
+        }
         Log.i(TAG, "Service destroyed")
         super.onDestroy()
     }
