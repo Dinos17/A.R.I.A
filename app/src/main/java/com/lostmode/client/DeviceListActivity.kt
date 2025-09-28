@@ -10,10 +10,6 @@ import androidx.recyclerview.widget.RecyclerView
 import org.json.JSONArray
 import org.json.JSONException
 
-/**
- * Displays all devices linked to the user's account.
- * Allows selecting a device to track or send commands.
- */
 class DeviceListActivity : AppCompatActivity() {
 
     companion object {
@@ -59,11 +55,20 @@ class DeviceListActivity : AppCompatActivity() {
                     val obj = jsonArray.getJSONObject(i)
                     val id = obj.optString("id", "unknown")
                     val name = obj.optString("name", "Unnamed Device")
-                    devices.add(Device(id, name))
+                    val photoUrl = obj.optString("photo_url", "")
+                    val device = Device(id, name, photoUrl)
+                    devices.add(device)
                     Log.d(TAG, "Device loaded: $id / $name")
                 }
 
-                runOnUiThread { adapter.notifyDataSetChanged() }
+                runOnUiThread {
+                    adapter.notifyDataSetChanged()
+                    // If only 1 device exists, go straight to dashboard
+                    if (devices.size == 1) {
+                        showDeviceDashboard(devices.first())
+                    }
+                }
+
             } catch (e: JSONException) {
                 Log.e(TAG, "Failed to parse devices JSON", e)
                 runOnUiThread {
@@ -72,9 +77,16 @@ class DeviceListActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun showDeviceDashboard(device: Device) {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            putExtra("DEVICE_ID", device.id)
+            putExtra("DEVICE_NAME", device.name)
+            putExtra("DEVICE_PHOTO", device.photoUrl)
+        }
+        startActivity(intent)
+        finish()
+    }
 }
 
-/**
- * Simple Device model
- */
-data class Device(val id: String, val name: String)
+data class Device(val id: String, val name: String, val photoUrl: String = "")
