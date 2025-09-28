@@ -1,13 +1,15 @@
 package com.lostmode.client
 
 import android.Manifest
+import android.app.Activity
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -86,22 +88,48 @@ class MainActivity : AppCompatActivity() {
                         "Required to enable Lost Mode features"
                     )
                 }
-                startActivity(intent)
+                startActivityForResult(intent, 1001)
+                return
             }
 
-            val svcIntent = Intent(this, LostModeService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                ContextCompat.startForegroundService(this, svcIntent)
-            } else {
-                startService(svcIntent)
-            }
+            startLostModeService()
 
         } catch (ex: Exception) {
             Log.e("MainActivity", "Error during Device Admin / LostMode setup: ${ex.message}", ex)
             Toast.makeText(this, "Lost Mode initialization failed", Toast.LENGTH_LONG).show()
+            navigateToDevicesScreen()
+        }
+    }
+
+    private fun startLostModeService() {
+        val svcIntent = Intent(this, LostModeService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ContextCompat.startForegroundService(this, svcIntent)
+        } else {
+            startService(svcIntent)
         }
 
-        navigateToDevicesScreen()
+        // Show toast to indicate secure mode is starting
+        Toast.makeText(this, "Secure Mode setup started", Toast.LENGTH_SHORT).show()
+
+        // Navigate to DeviceList after a small delay to show loading
+        Handler(Looper.getMainLooper()).postDelayed({
+            Toast.makeText(this, "Secure Mode active", Toast.LENGTH_SHORT).show()
+            navigateToDevicesScreen()
+        }, 1500)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 1001) {
+            if (resultCode == Activity.RESULT_OK) {
+                Log.i("MainActivity", "Device Admin granted")
+                startLostModeService()
+            } else {
+                Toast.makeText(this, "Device Admin permission required for Secure Mode", Toast.LENGTH_LONG).show()
+                navigateToDevicesScreen()
+            }
+        }
     }
 
     private fun navigateToDevicesScreen() {
@@ -116,11 +144,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun hasAllPermissions(): Boolean {
         basePermissions.forEach {
-            if (ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED) return false
+            if (ContextCompat.checkSelfPermission(this, it) != android.content.pm.PackageManager.PERMISSION_GRANTED) return false
         }
         if (Build.VERSION.SDK_INT >= 34) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.FOREGROUND_SERVICE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) return false
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) return false
         }
         return true
     }
