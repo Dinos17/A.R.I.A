@@ -8,6 +8,9 @@ import android.media.ToneGenerator
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 object RemoteCommandManager {
@@ -28,10 +31,15 @@ object RemoteCommandManager {
     }
 
     /**
-     * Send a command to another device by its ID.
+     * Send a command to another device by its ID (suspend-friendly).
      */
-    fun sendCommandToDevice(deviceId: String, command: JSONObject, onResult: ((Boolean) -> Unit)? = null) {
-        NetworkClient.sendDeviceCommand(deviceId, command, onResult)
+    suspend fun sendCommandToDevice(deviceId: String, command: JSONObject): Result<Boolean> {
+        return try {
+            NetworkClient.sendDeviceCommand(deviceId, command)
+        } catch (ex: Exception) {
+            Log.e(TAG, "Failed to send command to device: ${ex.message}", ex)
+            Result.failure(ex)
+        }
     }
 
     // --- Helpers ---
