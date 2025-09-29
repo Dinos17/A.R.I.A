@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class DeviceListActivity : AppCompatActivity() {
 
@@ -39,22 +40,26 @@ class DeviceListActivity : AppCompatActivity() {
     private fun fetchDevices() {
         Log.i(TAG, "Fetching devices from server...")
         CoroutineScope(Dispatchers.Main).launch {
-            NetworkClient.fetchDevices { deviceList ->
-                if (deviceList == null) {
-                    Log.w(TAG, "fetchDevices returned null")
-                    Toast.makeText(this@DeviceListActivity, "Failed to fetch devices", Toast.LENGTH_SHORT).show()
-                    return@fetchDevices
-                }
+            try {
+                val result = NetworkClient.fetchDevices() // suspend function
+                if (result.isSuccess) {
+                    val deviceList = result.getOrNull() ?: emptyList()
+                    Log.i(TAG, "Fetched ${deviceList.size} devices")
+                    devices.clear()
+                    devices.addAll(deviceList)
+                    adapter.notifyDataSetChanged()
 
-                Log.i(TAG, "Fetched ${deviceList.size} devices")
-                devices.clear()
-                devices.addAll(deviceList)
-                adapter.notifyDataSetChanged()
-
-                // Auto-navigate if only one device exists
-                if (devices.size == 1) {
-                    showDeviceDashboard(devices.first())
+                    if (devices.size == 1) {
+                        showDeviceDashboard(devices.first())
+                    }
+                } else {
+                    val errorMsg = result.exceptionOrNull()?.message ?: "Failed to fetch devices"
+                    Log.w(TAG, errorMsg)
+                    Toast.makeText(this@DeviceListActivity, errorMsg, Toast.LENGTH_SHORT).show()
                 }
+            } catch (ex: Exception) {
+                Log.e(TAG, "Error fetching devices: ${ex.message}", ex)
+                Toast.makeText(this@DeviceListActivity, "Error fetching devices", Toast.LENGTH_SHORT).show()
             }
         }
     }
