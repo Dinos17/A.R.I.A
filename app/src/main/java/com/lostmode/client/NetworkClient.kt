@@ -12,7 +12,6 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.logging.HttpLoggingInterceptor
 import org.json.JSONObject
-import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 object NetworkClient {
@@ -38,7 +37,7 @@ object NetworkClient {
             .build()
     }
 
-    // --- Data class for Devices ---
+    // --- Device data class ---
     data class Device(
         val id: Int,
         val name: String,
@@ -74,13 +73,17 @@ object NetworkClient {
     }
 
     // --- Authentication ---
-    suspend fun login(email: String, password: String): Result<String?> =
+    /**
+     * Returns Result.success(token) on success (also saves token internally),
+     * or Result.failure(Exception) on error.
+     */
+    suspend fun login(email: String, password: String): Result<String> =
         sendAuthRequest(Config.LOGIN_ENDPOINT, email, password)
 
-    suspend fun signup(email: String, password: String): Result<String?> =
+    suspend fun signup(email: String, password: String): Result<String> =
         sendAuthRequest(Config.SIGNUP_ENDPOINT, email, password)
 
-    private suspend fun sendAuthRequest(endpoint: String, email: String, password: String): Result<String?> {
+    private suspend fun sendAuthRequest(endpoint: String, email: String, password: String): Result<String> {
         return withContext(Dispatchers.IO) {
             try {
                 val payload = JSONObject().apply {
@@ -99,7 +102,7 @@ object NetworkClient {
                     val token = json.optString("token", "")
                     return@withContext if (token.isNotEmpty()) {
                         saveToken(token)
-                        Result.success(null)
+                        Result.success(token)
                     } else {
                         Result.failure(Exception(json.optString("message", "Invalid response")))
                     }
@@ -112,7 +115,10 @@ object NetworkClient {
     }
 
     // --- Location Updates ---
-    suspend fun sendLocationToServer(location: Location): Result<JSONObject?> = withContext(Dispatchers.IO) {
+    /**
+     * Returns Result.success(JSONObject) on success, or Result.failure on error.
+     */
+    suspend fun sendLocationToServer(location: Location): Result<JSONObject> = withContext(Dispatchers.IO) {
         try {
             val payload = JSONObject().apply {
                 put("lat", location.latitude)
@@ -126,11 +132,10 @@ object NetworkClient {
             client.newCall(request).execute().use { response ->
                 val respStr = response.body?.string()
                 Log.i(TAG, "Location response: HTTP ${response.code}, body=$respStr")
-                return@withContext if (response.isSuccessful && !respStr.isNullOrEmpty()) {
-                    Result.success(JSONObject(respStr))
-                } else {
-                    Result.failure(Exception("Location send failed: HTTP ${response.code}"))
+                if (response.isSuccessful && !respStr.isNullOrEmpty()) {
+                    return@withContext Result.success(JSONObject(respStr))
                 }
+                return@withContext Result.failure(Exception("Location send failed: HTTP ${response.code}"))
             }
         } catch (e: Exception) {
             Log.e(TAG, "Location send error", e)
@@ -139,13 +144,18 @@ object NetworkClient {
     }
 
     // --- Devices ---
+    /**
+     * Returns Result.success(List<Device>) on success, or Result.failure on error.
+     */
     suspend fun fetchDevices(): Result<List<Device>> = withContext(Dispatchers.IO) {
         try {
             val request = buildRequest(Config.DEVICES_ENDPOINT).build()
             client.newCall(request).execute().use { response ->
                 val respStr = response.body?.string()
                 Log.i(TAG, "Fetch devices response: HTTP ${response.code}, body=$respStr")
-                if (!response.isSuccessful || respStr.isNullOrEmpty()) return@withContext Result.failure(Exception("Fetch devices failed"))
+                if (!response.isSuccessful || respStr.isNullOrEmpty()) {
+                    return@withContext Result.failure(Exception("Fetch devices failed: HTTP ${response.code}"))
+                }
                 val typeToken = object : TypeToken<List<Device>>() {}.type
                 val devices: List<Device> = gson.fromJson(respStr, typeToken)
                 Result.success(devices)
