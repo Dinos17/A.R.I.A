@@ -9,8 +9,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 
 class DeviceAdapter(
-    private val devices: List<Device>,
-    private val onClick: (Device) -> Unit
+    private val devices: List<NetworkClient.Device>,
+    private val onClick: (NetworkClient.Device) -> Unit
 ) : RecyclerView.Adapter<DeviceAdapter.DeviceViewHolder>() {
 
     inner class DeviceViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -39,14 +39,15 @@ class DeviceAdapter(
         val device = devices[position]
         holder.txtName.text = device.name
 
-        // Load device photo using Glide if available
-        if (device.photoUrl.isNotEmpty()) {
-            Glide.with(holder.itemView.context)
-                .load(device.photoUrl)
-                .circleCrop()
-                .into(holder.imgPhoto)
-        } else {
-            holder.imgPhoto.setImageResource(R.drawable.ic_device_offline) // default icon
-        }
+        // Optional: display last update or coordinates in a subtitle
+        // holder.txtSubtitle.text = "Last: ${device.last_update}"
+
+        // Load device photo if available (currently server has no photoUrl)
+        holder.imgPhoto.setImageResource(R.drawable.ic_device_offline)
+        // If you later add photoUrl to the server/device object, use Glide:
+        // Glide.with(holder.itemView.context)
+        //     .load(device.photoUrl)
+        //     .circleCrop()
+        //     .into(holder.imgPhoto)
     }
 }
