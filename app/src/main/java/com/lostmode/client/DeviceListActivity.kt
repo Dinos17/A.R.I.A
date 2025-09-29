@@ -7,8 +7,9 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import org.json.JSONArray
-import org.json.JSONException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class DeviceListActivity : AppCompatActivity() {
 
@@ -18,7 +19,7 @@ class DeviceListActivity : AppCompatActivity() {
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: DeviceAdapter
-    private val devices = mutableListOf<Device>()
+    private val devices = mutableListOf<NetworkClient.Device>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,10 +29,7 @@ class DeviceListActivity : AppCompatActivity() {
         recyclerView.layoutManager = LinearLayoutManager(this)
         adapter = DeviceAdapter(devices) { device ->
             Log.i(TAG, "Device selected: ${device.id} / ${device.name}")
-            val intent = Intent(this, MainActivity::class.java).apply {
-                putExtra("DEVICE_ID", device.id)
-            }
-            startActivity(intent)
+            showDeviceDashboard(device)
         }
         recyclerView.adapter = adapter
 
@@ -40,53 +38,33 @@ class DeviceListActivity : AppCompatActivity() {
 
     private fun fetchDevices() {
         Log.i(TAG, "Fetching devices from server...")
-        NetworkClient.fetchDevices { jsonArray ->
-            if (jsonArray == null) {
-                runOnUiThread {
-                    Toast.makeText(this, "Failed to fetch devices", Toast.LENGTH_SHORT).show()
-                    Log.w(TAG, "fetchDevices returned null JSON array")
+        CoroutineScope(Dispatchers.Main).launch {
+            NetworkClient.fetchDevices { deviceList ->
+                if (deviceList == null) {
+                    Log.w(TAG, "fetchDevices returned null")
+                    Toast.makeText(this@DeviceListActivity, "Failed to fetch devices", Toast.LENGTH_SHORT).show()
+                    return@fetchDevices
                 }
-                return@fetchDevices
-            }
 
-            try {
+                Log.i(TAG, "Fetched ${deviceList.size} devices")
                 devices.clear()
-                for (i in 0 until jsonArray.length()) {
-                    val obj = jsonArray.getJSONObject(i)
-                    val id = obj.optString("id", "unknown")
-                    val name = obj.optString("name", "Unnamed Device")
-                    val photoUrl = obj.optString("photo_url", "")
-                    val device = Device(id, name, photoUrl)
-                    devices.add(device)
-                    Log.d(TAG, "Device loaded: $id / $name")
-                }
+                devices.addAll(deviceList)
+                adapter.notifyDataSetChanged()
 
-                runOnUiThread {
-                    adapter.notifyDataSetChanged()
-                    // If only 1 device exists, go straight to dashboard
-                    if (devices.size == 1) {
-                        showDeviceDashboard(devices.first())
-                    }
-                }
-
-            } catch (e: JSONException) {
-                Log.e(TAG, "Failed to parse devices JSON", e)
-                runOnUiThread {
-                    Toast.makeText(this, "Error parsing devices data", Toast.LENGTH_SHORT).show()
+                // Auto-navigate if only one device exists
+                if (devices.size == 1) {
+                    showDeviceDashboard(devices.first())
                 }
             }
         }
     }
 
-    private fun showDeviceDashboard(device: Device) {
+    private fun showDeviceDashboard(device: NetworkClient.Device) {
         val intent = Intent(this, MainActivity::class.java).apply {
             putExtra("DEVICE_ID", device.id)
             putExtra("DEVICE_NAME", device.name)
-            putExtra("DEVICE_PHOTO", device.photoUrl)
         }
         startActivity(intent)
         finish()
     }
 }
-
-data class Device(val id: String, val name: String, val photoUrl: String = "")
