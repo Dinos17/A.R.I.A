@@ -72,8 +72,16 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.9.0'
 
-    // Networking
+    // Networking (OkHttp)
     implementation 'com.squareup.okhttp3:okhttp:4.11.0'
+    // Optional: OkHttp logging interceptor for network debugging
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.11.0'
+
+    // JSON (Gson) - required by NetworkClient
+    implementation 'com.google.code.gson:gson:2.10.1'
+
+    // Coroutines (Android) - helpful if you use kotlinx.coroutines in Activities
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
 
     // Lifecycle / LiveData
     implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.6.2'
