@@ -2,11 +2,14 @@ package com.lostmode.client
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class LoginActivity : AppCompatActivity() {
 
@@ -35,15 +38,20 @@ class LoginActivity : AppCompatActivity() {
             Toast.makeText(this, "Enter email and password", Toast.LENGTH_SHORT).show()
             return
         }
-        NetworkClient.login(email, password) { success, message ->
-            runOnUiThread {
-                if (success) {
-                    Toast.makeText(this, "Login successful!", Toast.LENGTH_SHORT).show()
-                    startActivity(Intent(this, ModeSelectionActivity::class.java))
+
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val result = NetworkClient.login(email, password) // suspend function returning Result<String>
+                if (result.isSuccess) {
+                    Toast.makeText(this@LoginActivity, "Login successful!", Toast.LENGTH_SHORT).show()
+                    startActivity(Intent(this@LoginActivity, ModeSelectionActivity::class.java))
                     finish()
                 } else {
-                    Toast.makeText(this, message ?: "Login failed", Toast.LENGTH_SHORT).show()
+                    val errorMsg = result.exceptionOrNull()?.message ?: "Login failed"
+                    Toast.makeText(this@LoginActivity, errorMsg, Toast.LENGTH_SHORT).show()
                 }
+            } catch (ex: Exception) {
+                Toast.makeText(this@LoginActivity, "Login error: ${ex.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -55,15 +63,20 @@ class LoginActivity : AppCompatActivity() {
             Toast.makeText(this, "Enter email and password", Toast.LENGTH_SHORT).show()
             return
         }
-        NetworkClient.signup(email, password) { success, message ->
-            runOnUiThread {
-                if (success) {
-                    Toast.makeText(this, "Signup successful!", Toast.LENGTH_SHORT).show()
-                    startActivity(Intent(this, ModeSelectionActivity::class.java))
+
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val result = NetworkClient.signup(email, password) // suspend function returning Result<String>
+                if (result.isSuccess) {
+                    Toast.makeText(this@LoginActivity, "Signup successful!", Toast.LENGTH_SHORT).show()
+                    startActivity(Intent(this@LoginActivity, ModeSelectionActivity::class.java))
                     finish()
                 } else {
-                    Toast.makeText(this, message ?: "Signup failed", Toast.LENGTH_SHORT).show()
+                    val errorMsg = result.exceptionOrNull()?.message ?: "Signup failed"
+                    Toast.makeText(this@LoginActivity, errorMsg, Toast.LENGTH_SHORT).show()
                 }
+            } catch (ex: Exception) {
+                Toast.makeText(this@LoginActivity, "Signup error: ${ex.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
