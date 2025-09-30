@@ -29,15 +29,16 @@ class ModeSelectionActivity : AppCompatActivity() {
         btnChatAI.setOnClickListener { launchChatAI() }
     }
 
+    /**
+     * User chooses Secure Mode.
+     * We *don’t* save to prefs here — let MainActivity confirm permissions/admin first.
+     */
     private fun selectSecureMode() {
         try {
-            getSharedPreferences("ARIA_PREFS", MODE_PRIVATE)
-                .edit()
-                .putString("user_mode", "SECURE")
-                .apply()
-
-            // Navigate to MainActivity so it can handle permission + admin checks
             val intent = Intent(this, MainActivity::class.java).apply {
+                // Tell MainActivity what mode was chosen
+                putExtra("REQUESTED_MODE", "SECURE")
+
                 // Clear back stack so user can’t return here with back button
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             }
