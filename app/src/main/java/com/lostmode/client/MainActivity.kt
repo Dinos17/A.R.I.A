@@ -18,6 +18,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
+/**
+ * MainActivity
+ *
+ * Entry point of the app. Handles login check, mode selection,
+ * runtime permissions, device admin, and starting Lost Mode service.
+ */
 class MainActivity : AppCompatActivity() {
 
     private val basePermissions = arrayOf(
@@ -43,6 +49,7 @@ class MainActivity : AppCompatActivity() {
             val denied = result.entries.firstOrNull { !it.value }?.key
             if (denied != null) {
                 Toast.makeText(this, "Permissions required: $denied", Toast.LENGTH_LONG).show()
+                resetModeAndReturn()
             } else {
                 proceedAfterPermissions()
             }
@@ -76,10 +83,14 @@ class MainActivity : AppCompatActivity() {
         } catch (ex: Exception) {
             Log.e("MainActivity", "Error initializing MainActivity", ex)
             Toast.makeText(this, "App initialization error", Toast.LENGTH_LONG).show()
-            showDeviceDashboard()
+            resetModeAndReturn()
         }
     }
 
+    /**
+     * Called once all runtime permissions are handled.
+     * Requests Device Admin if needed, otherwise starts LostModeService.
+     */
     private fun proceedAfterPermissions() {
         try {
             val dpm = getSystemService(DevicePolicyManager::class.java)
@@ -102,10 +113,13 @@ class MainActivity : AppCompatActivity() {
         } catch (ex: Exception) {
             Log.e("MainActivity", "Error during Device Admin / LostMode setup", ex)
             Toast.makeText(this, "Lost Mode initialization failed", Toast.LENGTH_LONG).show()
-            showDeviceDashboard()
+            resetModeAndReturn()
         }
     }
 
+    /**
+     * Starts the LostModeService as a foreground service.
+     */
     private fun startLostModeService() {
         val svcIntent = Intent(this, LostModeService::class.java)
         try {
@@ -125,16 +139,13 @@ class MainActivity : AppCompatActivity() {
         } catch (ex: Exception) {
             Log.e("MainActivity", "Failed to start LostModeService", ex)
             Toast.makeText(this, "Unable to start Secure Mode", Toast.LENGTH_LONG).show()
-            showDeviceDashboard()
+            resetModeAndReturn()
         }
     }
 
-    private fun showDeviceDashboard() {
-        // TODO: Replace with your real dashboard implementation
-        startActivity(Intent(this, DeviceListActivity::class.java))
-        finish()
-    }
-
+    /**
+     * Handles Device Admin activation result.
+     */
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 1001) {
@@ -146,10 +157,21 @@ class MainActivity : AppCompatActivity() {
                     "Device Admin permission required for Secure Mode",
                     Toast.LENGTH_LONG
                 ).show()
-                showDeviceDashboard()
+                resetModeAndReturn()
             }
         }
     }
+
+    /**
+     * Launches device dashboard activity.
+     * Replace with real dashboard implementation.
+     */
+    private fun showDeviceDashboard() {
+        startActivity(Intent(this, DeviceListActivity::class.java))
+        finish()
+    }
+
+    // --- Helpers ---
 
     private fun hasAllPermissions(): Boolean {
         allPermissions.forEach { perm ->
@@ -174,5 +196,19 @@ class MainActivity : AppCompatActivity() {
             "SECURE", "BOTH" -> true
             else -> false
         }
+    }
+
+    /**
+     * Reset mode preference and return user to ModeSelectionActivity
+     * to avoid infinite loops if Secure Mode setup fails.
+     */
+    private fun resetModeAndReturn() {
+        getSharedPreferences("ARIA_PREFS", Context.MODE_PRIVATE)
+            .edit()
+            .remove("user_mode")
+            .apply()
+
+        startActivity(Intent(this, ModeSelectionActivity::class.java))
+        finish()
     }
 }
