@@ -6,7 +6,8 @@ package com.lostmode.client
  * SERVER_BASE: Update this to your server IP address or domain.
  * Example: "http://192.168.1.147:5000" or "https://myserver.com"
  *
- * Contains endpoints for location updates, device commands, devices list, and authentication.
+ * Contains endpoints for location updates, device commands, devices list, authentication,
+ * and device registration/unregistration.
  */
 object Config {
 
@@ -27,6 +28,14 @@ object Config {
     // Endpoint to fetch devices list for the logged-in account
     val DEVICES_ENDPOINT: String
         get() = "$SERVER_BASE/api/devices"
+
+    // Endpoint to register a new device
+    val ADD_DEVICE_ENDPOINT: String
+        get() = "$SERVER_BASE/api/register_device"
+
+    // Endpoint to unregister a device (future implementation)
+    val REMOVE_DEVICE_ENDPOINT: String
+        get() = "$SERVER_BASE/api/unregister_device"
 
     // Endpoint for login
     val LOGIN_ENDPOINT: String
