@@ -11,8 +11,8 @@
     android:layout_marginEnd="4dp"
     android:padding="12dp"
     android:clickable="true"
-    android:foreground="?attr/selectableItemBackground"
     android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
     app:cardCornerRadius="12dp"
     app:cardElevation="4dp"
     app:strokeWidth="1dp"
@@ -36,7 +36,7 @@
             android:background="@drawable/bg_circle"
             android:clipToOutline="true" />
 
-        <!-- Device Name and Status -->
+        <!-- Device Name & Status -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -64,7 +64,7 @@
 
         </LinearLayout>
 
-        <!-- Optional status icon -->
+        <!-- Device Status Icon -->
         <ImageView
             android:id="@+id/imgDeviceStatus"
             android:layout_width="24dp"
