@@ -4,12 +4,16 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * LauncherActivity
  *
  * Entry point of the app.
  * Redirects user based on authentication and selected mode.
+ * Automatically registers device if user is logged in.
  */
 class LauncherActivity : AppCompatActivity() {
 
@@ -36,8 +40,13 @@ class LauncherActivity : AppCompatActivity() {
                 }
                 else -> {
                     Log.i(TAG, "User logged in with mode=$userMode → navigating to MainActivity")
+
+                    // Automatically register device on launch
+                    CoroutineScope(Dispatchers.IO).launch {
+                        AriaApp.instance.registerDeviceIfNeeded()
+                    }
+
                     val intent = Intent(this, MainActivity::class.java)
-                    // Clear back stack to prevent going back to login/mode selection
                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                     startActivity(intent)
                 }
@@ -45,7 +54,6 @@ class LauncherActivity : AppCompatActivity() {
 
         } catch (ex: Exception) {
             Log.e(TAG, "Error during launch flow: ${ex.message}", ex)
-            // Fallback: always navigate to LoginActivity
             startActivity(Intent(this, LoginActivity::class.java))
         } finally {
             finish() // prevent returning to launcher
