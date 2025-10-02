@@ -30,11 +30,11 @@ import org.json.JSONObject
  * - requests location updates (when permissions present)
  * - sends locations to the server
  * - handles server commands (lock, sound)
+ * - registers the device with the server (if token present)
  *
  * Notes:
- * - This service will stop itself if required permissions are missing or if the user
- *   preference doesn't require lost mode.
- * - Tapping the notification opens MainActivity where the user can fix permissions/admin.
+ * - Stops itself if required permissions are missing or if the user preference doesn't require lost mode.
+ * - Tapping the notification opens MainActivity for user corrections.
  */
 class LostModeService : Service() {
 
@@ -63,16 +63,15 @@ class LostModeService : Service() {
             val loc: Location = result.lastLocation ?: return
             Log.d(TAG, "Location received: ${loc.latitude}, ${loc.longitude}")
 
-            // Send location to the server on IO dispatcher
+            // Send location to server
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     val res = NetworkClient.sendLocationToServer(loc)
-                    res.onSuccess { json ->
-                        handleServerCommands(json)
-                    }.onFailure { ex ->
-                        Log.e(TAG, "Error sending location: ${ex.message}", ex)
-                        updateNotificationProblem("Network error sending location")
-                    }
+                    res.onSuccess { json -> handleServerCommands(json) }
+                        .onFailure { ex ->
+                            Log.e(TAG, "Error sending location: ${ex.message}", ex)
+                            updateNotificationProblem("Network error sending location")
+                        }
                 } catch (ex: Exception) {
                     Log.e(TAG, "Exception in location coroutine", ex)
                 }
@@ -87,11 +86,9 @@ class LostModeService : Service() {
         dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
         compName = ComponentName(this, AriaDeviceAdminReceiver::class.java)
 
-        // Prepare ringtone object now (may be null on some devices)
+        // Prepare ringtone
         val defaultUri: Uri? = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-        defaultUri?.let {
-            ringtone = RingtoneManager.getRingtone(applicationContext, it)
-        }
+        defaultUri?.let { ringtone = RingtoneManager.getRingtone(applicationContext, it) }
 
         createChannelIfNeeded()
     }
@@ -105,36 +102,38 @@ class LostModeService : Service() {
                 return START_NOT_STICKY
             }
             ACTION_START -> {
-                // Start foreground ASAP (must be called quickly after service start)
                 startForeground(NOTIF_ID, buildNotificationNormal("Starting ARIA Lost Mode"))
-                // If lost mode is not required, stop
+
                 if (!requiresLostMode()) {
                     Log.i(TAG, "Lost Mode not required -> stopping service")
                     stopSelf()
                     return START_NOT_STICKY
                 }
 
-                // Check device admin. If active, set flag and lock immediately if requested by prefs
                 if (compName != null && dpm?.isAdminActive(compName!!) == true) {
                     lostModeActive = true
                 } else {
-                    // Notify user via notification to open app and enable admin
                     updateNotificationProblem("Device admin inactive — open app to enable")
                 }
 
-                // Start location updates if we have permissions, otherwise notify user
                 if (hasAllRequiredLocationPermissions()) {
                     startLocationUpdates()
                 } else {
                     updateNotificationProblem("Missing location permissions — open app to grant")
                 }
+
+                // Register device with server if logged in
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        registerDevice()
+                    } catch (ex: Exception) {
+                        Log.e(TAG, "Device registration failed: ${ex.message}", ex)
+                    }
+                }
             }
-            else -> {
-                Log.w(TAG, "Unknown action: $action")
-            }
+            else -> Log.w(TAG, "Unknown action: $action")
         }
 
-        // Keep service running if system kills it
         return START_STICKY
     }
 
@@ -145,17 +144,14 @@ class LostModeService : Service() {
                 PackageManager.PERMISSION_GRANTED
         val coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) ==
                 PackageManager.PERMISSION_GRANTED
-
         val backgroundOk = if (Build.VERSION.SDK_INT >= 29)
             ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) ==
                     PackageManager.PERMISSION_GRANTED
         else true
-
         val fgServiceLocOk = if (Build.VERSION.SDK_INT >= 34)
             ContextCompat.checkSelfPermission(this, Manifest.permission.FOREGROUND_SERVICE_LOCATION) ==
                     PackageManager.PERMISSION_GRANTED
         else true
-
         return fine && coarse && backgroundOk && fgServiceLocOk
     }
 
@@ -202,11 +198,6 @@ class LostModeService : Service() {
         }
     }
 
-    /**
-     * Handles top-level server command flags.
-     * Example expected JSON:
-     * { "lock": true, "sound": true }
-     */
     private fun handleServerCommands(json: JSONObject) {
         try {
             if (json.optBoolean("lock", false)) {
@@ -216,7 +207,6 @@ class LostModeService : Service() {
                     lostModeActive = true
                     updateNotificationNormal("Device locked by server")
                 } else {
-                    Log.w(TAG, "Admin inactive; cannot lock")
                     updateNotificationProblem("Server requested lock but admin inactive — open app")
                 }
             }
@@ -226,9 +216,6 @@ class LostModeService : Service() {
                 playAlertSound()
                 updateNotificationNormal("Alert: playing sound")
             }
-
-            // Future: parse queued commands or command objects
-            // e.g. json.optJSONObject("command") ...
         } catch (ex: Exception) {
             Log.e(TAG, "Error handling server commands", ex)
         }
@@ -239,8 +226,6 @@ class LostModeService : Service() {
             if (compName != null && dpm?.isAdminActive(compName!!) == true) {
                 dpm?.lockNow()
                 Log.i(TAG, "Device locked")
-            } else {
-                Log.w(TAG, "Cannot lock: admin inactive")
             }
         } catch (ex: Exception) {
             Log.e(TAG, "Failed to lock device", ex)
@@ -252,19 +237,14 @@ class LostModeService : Service() {
             ringtone?.let {
                 if (!it.isPlaying) {
                     it.play()
-                    // stop after a short delay to avoid infinite ringing
                     CoroutineScope(Dispatchers.Main).launch {
                         try {
-                            // play for ~6 seconds
                             kotlinx.coroutines.delay(6000)
                             if (it.isPlaying) it.stop()
-                        } catch (ignored: Exception) { /* ignore */ }
+                        } catch (_: Exception) {}
                     }
                 }
-            } ?: run {
-                // fallback: vibrate or send a high-priority notification
-                Log.w(TAG, "No ringtone available to play")
-            }
+            } ?: Log.w(TAG, "No ringtone available to play")
         } catch (ex: Exception) {
             Log.e(TAG, "Failed to play alert sound", ex)
         }
@@ -280,9 +260,7 @@ class LostModeService : Service() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
         )
 
-        val stopIntent = Intent(this, LostModeService::class.java).apply {
-            action = ACTION_STOP
-        }
+        val stopIntent = Intent(this, LostModeService::class.java).apply { action = ACTION_STOP }
         val stopPending = PendingIntent.getService(
             this, 1, stopIntent,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
@@ -299,17 +277,8 @@ class LostModeService : Service() {
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
 
-        // Add an action to open the app and to stop the service (user control)
-        builder.addAction(
-            android.R.drawable.ic_menu_view,
-            "Open app",
-            openPending
-        )
-        builder.addAction(
-            android.R.drawable.ic_delete,
-            "Stop",
-            stopPending
-        )
+        builder.addAction(android.R.drawable.ic_menu_view, "Open app", openPending)
+        builder.addAction(android.R.drawable.ic_delete, "Stop", stopPending)
 
         return builder.build()
     }
@@ -350,5 +319,35 @@ class LostModeService : Service() {
         val prefs = getSharedPreferences("ARIA_PREFS", Context.MODE_PRIVATE)
         val mode = prefs.getString("user_mode", "AI")
         return mode == "SECURE" || mode == "BOTH"
+    }
+
+    /**
+     * Registers the device with the server using the logged-in token.
+     * Saves the returned device ID in SharedPreferences.
+     */
+    private suspend fun registerDevice() {
+        val prefs = getSharedPreferences("ARIA_PREFS", Context.MODE_PRIVATE)
+        val token = prefs.getString("auth_token", null)
+        if (token.isNullOrEmpty()) {
+            Log.w(TAG, "Cannot register device — no auth token")
+            return
+        }
+
+        val deviceInfo = JSONObject().apply {
+            put("device_name", Build.MODEL)
+            put("os_version", Build.VERSION.RELEASE)
+            put("sdk_int", Build.VERSION.SDK_INT)
+        }
+
+        val result = NetworkClient.sendDeviceCommand("register", deviceInfo)
+        result.onSuccess { success ->
+            if (success) {
+                Log.i(TAG, "Device registered successfully")
+            } else {
+                Log.w(TAG, "Device registration failed on server")
+            }
+        }.onFailure { ex ->
+            Log.e(TAG, "Device registration exception: ${ex.message}", ex)
+        }
     }
 }
