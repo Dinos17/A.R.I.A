@@ -32,7 +32,7 @@ object Config {
     val LOGIN_ENDPOINT: String
         get() = "$SERVER_BASE/api/login"
 
-    // ✅ Add this for signup
+    // Endpoint for signup
     val SIGNUP_ENDPOINT: String
         get() = "$SERVER_BASE/api/signup"
 
