@@ -49,18 +49,12 @@ object NetworkClient {
 
     // --- Token Management ---
     private fun getToken(): String? {
-        val prefs = AriaApp.instance.getSharedPreferences(
-            PREFS_NAME,
-            Context.MODE_PRIVATE
-        )
+        val prefs = AriaApp.instance.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getString(PREFS_TOKEN_KEY, null)
     }
 
     private fun saveToken(token: String) {
-        val prefs = AriaApp.instance.getSharedPreferences(
-            PREFS_NAME,
-            Context.MODE_PRIVATE
-        )
+        val prefs = AriaApp.instance.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putString(PREFS_TOKEN_KEY, token).apply()
         Log.i(TAG, "Auth token saved")
     }
@@ -73,10 +67,6 @@ object NetworkClient {
     }
 
     // --- Authentication ---
-    /**
-     * Returns Result.success(token) on success (also saves token internally),
-     * or Result.failure(Exception) on error.
-     */
     suspend fun login(email: String, password: String): Result<String> =
         sendAuthRequest(Config.LOGIN_ENDPOINT, email, password)
 
@@ -115,9 +105,6 @@ object NetworkClient {
     }
 
     // --- Location Updates ---
-    /**
-     * Returns Result.success(JSONObject) on success, or Result.failure on error.
-     */
     suspend fun sendLocationToServer(location: Location): Result<JSONObject> = withContext(Dispatchers.IO) {
         try {
             val prefs = AriaApp.instance.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -147,9 +134,6 @@ object NetworkClient {
     }
 
     // --- Devices ---
-    /**
-     * Returns Result.success(List<Device>) on success, or Result.failure on error.
-     */
     suspend fun fetchDevices(): Result<List<Device>> = withContext(Dispatchers.IO) {
         try {
             val request = buildRequest(Config.DEVICES_ENDPOINT).build()
