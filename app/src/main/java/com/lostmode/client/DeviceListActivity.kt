@@ -10,7 +10,6 @@ import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class DeviceListActivity : AppCompatActivity() {
 
@@ -30,12 +29,11 @@ class DeviceListActivity : AppCompatActivity() {
         recyclerView.layoutManager = LinearLayoutManager(this)
         adapter = DeviceAdapter(devices) { device ->
             Log.i(TAG, "Device selected: ${device.id} / ${device.name}")
-            // Persist selected device id for location updates
             getSharedPreferences("ARIA_PREFS", MODE_PRIVATE)
                 .edit()
                 .putInt("selected_device_id", device.id)
                 .apply()
-            showDeviceDashboard(device)
+            openDeviceDashboard(device)
         }
         recyclerView.adapter = adapter
 
@@ -46,7 +44,7 @@ class DeviceListActivity : AppCompatActivity() {
         Log.i(TAG, "Fetching devices from server...")
         CoroutineScope(Dispatchers.Main).launch {
             try {
-                val result = NetworkClient.fetchDevices() // suspend function
+                val result = NetworkClient.fetchDevices()
                 if (result.isSuccess) {
                     val deviceList = result.getOrNull() ?: emptyList()
                     Log.i(TAG, "Fetched ${deviceList.size} devices")
@@ -55,7 +53,7 @@ class DeviceListActivity : AppCompatActivity() {
                     adapter.notifyDataSetChanged()
 
                     if (devices.size == 1) {
-                        showDeviceDashboard(devices.first())
+                        openDeviceDashboard(devices.first())
                     }
                 } else {
                     val errorMsg = result.exceptionOrNull()?.message ?: "Failed to fetch devices"
@@ -69,7 +67,7 @@ class DeviceListActivity : AppCompatActivity() {
         }
     }
 
-    private fun showDeviceDashboard(device: NetworkClient.Device) {
+    private fun openDeviceDashboard(device: NetworkClient.Device) {
         val intent = Intent(this, MainActivity::class.java).apply {
             putExtra("DEVICE_ID", device.id)
             putExtra("DEVICE_NAME", device.name)
