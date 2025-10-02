@@ -6,12 +6,14 @@ import android.util.Log
 import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * ModeSelectionActivity
  *
  * Allows the user to select the operation mode of ARIA.
- * Two buttons: Secure Device Mode and Chat with AI (future feature).
  */
 class ModeSelectionActivity : AppCompatActivity() {
 
@@ -29,17 +31,25 @@ class ModeSelectionActivity : AppCompatActivity() {
         btnChatAI.setOnClickListener { launchChatAI() }
     }
 
-    /**
-     * User chooses Secure Mode.
-     * We *don’t* save to prefs here — let MainActivity confirm permissions/admin first.
-     */
     private fun selectSecureMode() {
         try {
-            val intent = Intent(this, MainActivity::class.java).apply {
-                // Tell MainActivity what mode was chosen
-                putExtra("REQUESTED_MODE", "SECURE")
+            // Save the selected mode in SharedPreferences
+            getSharedPreferences("ARIA_PREFS", MODE_PRIVATE)
+                .edit()
+                .putString("user_mode", "SECURE")
+                .apply()
 
-                // Clear back stack so user can’t return here with back button
+            // Register the device in background if needed
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    AriaApp.instance.registerDeviceIfNeeded()
+                } catch (ex: Exception) {
+                    Log.e("ModeSelectionActivity", "Device registration failed", ex)
+                }
+            }
+
+            val intent = Intent(this, MainActivity::class.java).apply {
+                putExtra("REQUESTED_MODE", "SECURE")
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             }
             startActivity(intent)
@@ -53,7 +63,6 @@ class ModeSelectionActivity : AppCompatActivity() {
 
     private fun launchChatAI() {
         Toast.makeText(this, "Chat with AI feature coming soon!", Toast.LENGTH_SHORT).show()
-        // Future:
-        // startActivity(Intent(this, ChatAIActivity::class.java))
+        // Future: startActivity(Intent(this, ChatAIActivity::class.java))
     }
 }
