@@ -18,6 +18,8 @@ class AriaDeviceAdminReceiver : DeviceAdminReceiver() {
     override fun onEnabled(context: Context, intent: Intent) {
         super.onEnabled(context, intent)
         Log.i(TAG, "Device admin enabled. Lost Mode can now lock the device.")
+        // Optional: notify service to re-check admin and perform any pending actions
+        // Intent to service could be triggered here if needed
     }
 
     override fun onDisabled(context: Context, intent: Intent) {
