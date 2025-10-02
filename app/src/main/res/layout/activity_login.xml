@@ -72,11 +72,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Login"
-            android:backgroundTint="@color/primaryColor"
             android:textColor="@color/white"
             android:padding="14dp"
             android:layout_marginBottom="12dp"
-            android:background="@drawable/bg_button_rounded" />
+            android:background="@drawable/bg_button_rounded"
+            android:backgroundTint="@color/primaryColor" />
 
         <!-- Sign Up button -->
         <Button
@@ -84,10 +84,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Sign Up"
-            android:backgroundTint="@color/secondaryColor"
             android:textColor="@color/white"
             android:padding="14dp"
-            android:background="@drawable/bg_button_rounded" />
+            android:background="@drawable/bg_button_rounded"
+            android:backgroundTint="@color/secondaryColor" />
 
         <!-- Toggle between login/signup -->
         <TextView
