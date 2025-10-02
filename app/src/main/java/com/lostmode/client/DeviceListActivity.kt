@@ -37,6 +37,15 @@ class DeviceListActivity : AppCompatActivity() {
         }
         recyclerView.adapter = adapter
 
+        // Automatically register device if needed
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                AriaApp.instance.registerDeviceIfNeeded()
+            } catch (ex: Exception) {
+                Log.e(TAG, "Device registration failed", ex)
+            }
+        }
+
         fetchDevices()
     }
 
