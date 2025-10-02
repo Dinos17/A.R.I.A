@@ -30,6 +30,11 @@ class DeviceListActivity : AppCompatActivity() {
         recyclerView.layoutManager = LinearLayoutManager(this)
         adapter = DeviceAdapter(devices) { device ->
             Log.i(TAG, "Device selected: ${device.id} / ${device.name}")
+            // Persist selected device id for location updates
+            getSharedPreferences("ARIA_PREFS", MODE_PRIVATE)
+                .edit()
+                .putInt("selected_device_id", device.id)
+                .apply()
             showDeviceDashboard(device)
         }
         recyclerView.adapter = adapter
