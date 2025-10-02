@@ -60,6 +60,16 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         try {
+            // Persist requested mode if provided (prevents loop and enables LostModeService)
+            intent.getStringExtra("REQUESTED_MODE")?.let { requested ->
+                if (requested == "SECURE" || requested == "BOTH") {
+                    getSharedPreferences("ARIA_PREFS", Context.MODE_PRIVATE)
+                        .edit()
+                        .putString("user_mode", requested)
+                        .apply()
+                }
+            }
+
             when {
                 !isLoggedIn() -> {
                     startActivity(Intent(this, LoginActivity::class.java))
