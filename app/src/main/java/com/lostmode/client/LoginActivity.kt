@@ -9,7 +9,6 @@ import androidx.appcompat.app.AppCompatActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class LoginActivity : AppCompatActivity() {
 
@@ -41,9 +40,16 @@ class LoginActivity : AppCompatActivity() {
 
         CoroutineScope(Dispatchers.Main).launch {
             try {
-                val result = NetworkClient.login(email, password) // suspend function returning Result<String>
+                val result = NetworkClient.login(email, password)
                 if (result.isSuccess) {
                     Toast.makeText(this@LoginActivity, "Login successful!", Toast.LENGTH_SHORT).show()
+
+                    // Save token and register device
+                    AriaApp.instance.saveAuthToken(result.getOrNull()!!)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        AriaApp.instance.registerDeviceIfNeeded()
+                    }
+
                     startActivity(Intent(this@LoginActivity, ModeSelectionActivity::class.java))
                     finish()
                 } else {
@@ -66,9 +72,16 @@ class LoginActivity : AppCompatActivity() {
 
         CoroutineScope(Dispatchers.Main).launch {
             try {
-                val result = NetworkClient.signup(email, password) // suspend function returning Result<String>
+                val result = NetworkClient.signup(email, password)
                 if (result.isSuccess) {
                     Toast.makeText(this@LoginActivity, "Signup successful!", Toast.LENGTH_SHORT).show()
+
+                    // Save token and register device
+                    AriaApp.instance.saveAuthToken(result.getOrNull()!!)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        AriaApp.instance.registerDeviceIfNeeded()
+                    }
+
                     startActivity(Intent(this@LoginActivity, ModeSelectionActivity::class.java))
                     finish()
                 } else {
