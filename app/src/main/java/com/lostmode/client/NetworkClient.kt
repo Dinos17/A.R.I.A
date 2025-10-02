@@ -104,6 +104,46 @@ object NetworkClient {
         }
     }
 
+    // --- Device Registration ---
+    suspend fun registerDevice(deviceName: String): Result<Device> = withContext(Dispatchers.IO) {
+        try {
+            val payload = JSONObject().apply {
+                put("name", deviceName)
+                put("last_lat", JSONObject.NULL)
+                put("last_lng", JSONObject.NULL)
+                put("last_update", JSONObject.NULL)
+            }
+            val body = payload.toString().toRequestBody(JSON_MEDIA_TYPE)
+            val request = buildRequest(Config.ADD_DEVICE_ENDPOINT, body).build()
+
+            client.newCall(request).execute().use { response ->
+                val respStr = response.body?.string()
+                Log.i(TAG, "Device registration response: HTTP ${response.code}, body=$respStr")
+                if (!response.isSuccessful || respStr.isNullOrEmpty()) {
+                    return@withContext Result.failure(Exception("Device registration failed: HTTP ${response.code}"))
+                }
+                val json = JSONObject(respStr)
+                val device = Device(
+                    id = json.getInt("id"),
+                    name = json.getString("name"),
+                    owner_id = json.getInt("owner_id"),
+                    last_lat = json.optDouble("last_lat", 0.0),
+                    last_lng = json.optDouble("last_lng", 0.0),
+                    last_update = json.optString("last_update", "")
+                )
+
+                // Save device ID locally
+                val prefs = AriaApp.instance.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                prefs.edit().putInt("selected_device_id", device.id).apply()
+
+                return@withContext Result.success(device)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Device registration error", e)
+            Result.failure(e)
+        }
+    }
+
     // --- Location Updates ---
     suspend fun sendLocationToServer(location: Location): Result<JSONObject> = withContext(Dispatchers.IO) {
         try {
