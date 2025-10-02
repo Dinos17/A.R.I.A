@@ -120,7 +120,10 @@ object NetworkClient {
      */
     suspend fun sendLocationToServer(location: Location): Result<JSONObject> = withContext(Dispatchers.IO) {
         try {
+            val prefs = AriaApp.instance.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val deviceId = prefs.getInt("selected_device_id", -1)
             val payload = JSONObject().apply {
+                if (deviceId > 0) put("device_id", deviceId)
                 put("lat", location.latitude)
                 put("lng", location.longitude)
                 put("accuracy", location.accuracy)
